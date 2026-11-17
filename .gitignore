@@ -1,0 +1,10 @@
+node_modules/
+.DS_Store
+# Données générées par le bench
+results/
+results-servers/
+gateway.json
+providers.local.json
+examples/**/.instances/
+.env
+.env.bench

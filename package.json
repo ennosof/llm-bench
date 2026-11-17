@@ -1,0 +1,23 @@
+{
+  "name": "llm-bench",
+  "version": "0.1.0",
+  "description": "Benchmark de modèles LLM (locaux ou cloud, gratuits ou payants) sur un prompt ou sur un chatbot HTTP complet, avec une passerelle pour basculer de modèle sans toucher au code.",
+  "license": "MIT",
+  "author": "ennosof",
+  "repository": { "type": "git", "url": "git+https://github.com/ennosof/llm-bench.git" },
+  "homepage": "https://github.com/ennosof/llm-bench#readme",
+  "bugs": { "url": "https://github.com/ennosof/llm-bench/issues" },
+  "keywords": ["llm", "benchmark", "ollama", "openai", "gateway", "chatbot", "testing"],
+  "type": "module",
+  "bin": { "llm-bench": "bin/llm-bench.mjs" },
+  "files": ["bin", "src", "ui", "examples", "README.md", "README.fr.md", "LICENSE"],
+  "scripts": {
+    "start": "node bin/llm-bench.mjs",
+    "typecheck": "tsc --noEmit",
+    "i18n:check": "tsx scripts/i18n-check.mjs",
+    "example": "node bin/llm-bench.mjs ui --config examples/minimal-chatbot/bench.config.ts --open"
+  },
+  "engines": { "node": ">=22" },
+  "dependencies": { "tsx": "^4.23.15" },
+  "devDependencies": { "@types/node": "^22.10.0", "typescript": "^5.7.0" }
+}
