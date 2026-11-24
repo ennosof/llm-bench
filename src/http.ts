@@ -14,7 +14,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { peekCalls, relay } from "./capture.js";
 import { checkTypesForUi } from "./checks.js";
-import { DEFAULT_SERVER_ENV, config, saveServerEnv } from "./config.js";
+import { DEFAULT_SERVER_ENV, config, reloadConfigIfChanged, saveServerEnv } from "./config.js";
 import { parseLang, withLang, defaultLang, tr } from "./i18n.js";
 import { GATEWAY_CHANNEL, gatewayStatus, gatewayTarget, onGatewayCall, setGateway } from "./gateway.js";
 import {
@@ -24,7 +24,7 @@ import {
 import { codeEnvNames, envFileNames } from "./init.js";
 import { deleteModel, libraryTags, listLocalModels, ollamaProvider, ollamaVersion, pullModel, searchLibrary } from "./ollama.js";
 import {
-  cleanCase, closeStaleReports, deleteReport, listReports, loadCases, loadReport, promptCheckTypes, replayResult, runCampaign,
+  cleanCase, closeStaleReports, deleteReport, listReports, loadCases, modelLeaderboard, loadReport, promptCheckTypes, replayResult, runCampaign,
   saveCases, summarize, systemPrompt, validateCase,
 } from "./prompt-bench.js";
 import { describeSource, detectPrompts, evalExports, projectRoot, resolveVersion, savePromptSource } from "./prompt-source.js";
@@ -344,6 +344,8 @@ route("POST", /^\/api\/runs\/stop$/, () => {
 
 route("GET", /^\/api\/reports$/, () => listReports());
 
+route("GET", /^\/api\/leaderboard$/, () => modelLeaderboard());
+
 route("GET", /^\/api\/reports\/([\w-]+)$/, (_req, _res, [id]) => {
   try {
     const report = loadReport(id);
@@ -586,6 +588,8 @@ export function startHttp(opts: { onListening?: (url: string) => void } = {}) {
 
   const handle = async (req: IncomingMessage, res: ServerResponse) => {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
+    // Configuration modifiée sur le disque : rechargée avant de servir l'interface ou l'API.
+    if (url.pathname === "/" || url.pathname.startsWith("/api/")) await reloadConfigIfChanged();
 
     // Proxy des serveurs du bench : /llm/<id>/chat/completions
     const llm = url.pathname.match(/^\/llm\/([a-z0-9][a-z0-9._-]{0,80})(\/.*)$/);

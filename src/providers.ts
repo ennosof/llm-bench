@@ -241,6 +241,21 @@ export interface Completion {
   finishReason?: string;
 }
 
+/** Corps de requête sans « tools » : les outils sont décrits à la fin du prompt système (appel en JSON). */
+export function toolsAsText(body: Record<string, unknown>): Record<string, unknown> {
+  const { tools, tool_choice: _, ...rest } = body as { tools: any[]; tool_choice?: unknown; messages?: unknown };
+  const spec = [
+    tr("Outils disponibles. Pour en appeler un, réponds UNIQUEMENT par une ligne JSON, sans autre texte :"),
+    '{"name": "<outil>", "arguments": {...}}',
+    ...tools.map((t: any) => `- ${t.function?.name} : ${t.function?.description ?? ""} ${tr("Paramètres (JSON Schema) :")} ${JSON.stringify(t.function?.parameters ?? {})}`),
+  ].join("\n");
+  const messages = Array.isArray(rest.messages) ? [...(rest.messages as any[])] : [];
+  const i = messages.findIndex((m) => m?.role === "system" || m?.role === "developer");
+  if (i >= 0) messages[i] = { ...messages[i], content: `${messages[i].content}\n\n${spec}` };
+  else messages.unshift({ role: "system", content: spec });
+  return { ...rest, messages };
+}
+
 export async function complete(ref: ModelRef, body: Record<string, unknown>, opts: { signal?: AbortSignal; timeoutMs?: number } = {}): Promise<Completion> {
   const p = provider(ref.provider);
   const timeout = AbortSignal.timeout(opts.timeoutMs ?? 180_000);
@@ -250,10 +265,33 @@ export async function complete(ref: ModelRef, body: Record<string, unknown>, opt
     body: JSON.stringify(adaptBody(ref.provider, ref.model, { ...body, model: ref.model })),
     signal: opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout,
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status} ${(await res.text()).slice(0, 300)}`);
+  if (!res.ok) {
+    const detail = (await res.text()).slice(0, 300);
+    // Modèle sans appel d'outils natif (ex. « does not support tools » sous Ollama) : outils décrits dans le
+    // prompt système, appel attendu en JSON dans le texte, comme le font les serveurs qui gèrent ce cas.
+    if (Array.isArray(body.tools) && body.tools.length && /tools?\b.*not supported|does not support tools/i.test(detail)) {
+      return complete(ref, toolsAsText(body), opts);
+    }
+    throw new Error(`HTTP ${res.status} ${detail}`);
+  }
   const json = (await res.json()) as any;
+  const message = json.choices?.[0]?.message;
+  const content = String(message?.content ?? "").trim();
+  // Appels d'outils (tools passés par prompt.request) : rendus en JSON pour que les vérifications les lisent,
+  // ex. tool_calls.0.name ; arguments décodés quand c'est possible.
+  const toolCalls = Array.isArray(message?.tool_calls) ? message.tool_calls : [];
+  const text = toolCalls.length
+    ? JSON.stringify({
+        tool_calls: toolCalls.map((c: any) => {
+          let args: unknown = c.function?.arguments ?? {};
+          try { if (typeof args === "string") args = JSON.parse(args || "{}"); } catch { /* arguments non JSON : gardés tels quels */ }
+          return { name: c.function?.name, arguments: args };
+        }),
+        ...(content ? { content } : {}),
+      }, null, 2)
+    : content;
   return {
-    text: String(json.choices?.[0]?.message?.content ?? "").trim(),
+    text,
     promptTokens: json.usage?.prompt_tokens,
     completionTokens: json.usage?.completion_tokens,
     finishReason: json.choices?.[0]?.finish_reason,
@@ -271,6 +309,8 @@ export interface AvailableModel {
   tier: Tier;
   details?: string;
   loaded?: boolean;
+  /** Mémoire occupée par le modèle chargé (octets, RAM + VRAM), modèles Ollama en mémoire seulement. */
+  memory?: number;
 }
 
 export async function modelsOf(name: string): Promise<AvailableModel[]> {
@@ -281,7 +321,7 @@ export async function modelsOf(name: string): Promise<AvailableModel[]> {
   for (const m of p.models ?? []) add(m);
   if (p.kind === "ollama") {
     for (const m of await listLocalModels(ollamaUrlOf(p))) {
-      add(m.name, { details: [m.parameterSize, m.quantization].filter(Boolean).join(" · "), loaded: Boolean(m.loaded) });
+      add(m.name, { details: [m.parameterSize, m.quantization].filter(Boolean).join(" · "), loaded: Boolean(m.loaded), memory: m.loaded?.size });
     }
   } else if (p.listModels && p.baseUrl) {
     const res = await fetch(upstreamUrl(name, "/models"), { headers: authHeaders(p), signal: AbortSignal.timeout(15_000) });

@@ -1,5 +1,10 @@
 /** Traductions anglaises (clé : texte français tel qu'écrit dans tr("…")). */
 export const EN_CORE: Record<string, string> = {
+  "Outils disponibles. Pour en appeler un, réponds UNIQUEMENT par une ligne JSON, sans autre texte :": "Available tools. To call one, answer ONLY with one JSON line, nothing else:",
+  "Paramètres (JSON Schema) :": "Parameters (JSON Schema):",
+  "Configuration rechargée : {file}": "Configuration reloaded: {file}",
+  "Configuration modifiée mais illisible, l'ancienne reste active : {error}": "Configuration changed but unreadable, keeping the previous one: {error}",
+  "ATTENTION : {file} introuvable. La copie ne reçoit que les variables du modèle et du port ; les autres variables du projet seront absentes. Créez ce fichier dans le projet (ou renseignez server.envFile), puis recréez le serveur.": "WARNING: {file} not found. The copy only receives the model and port variables; the project's other variables will be missing. Create this file in the project (or set server.envFile), then recreate the server.",
   "Dossiers à partager absents du projet ({dirs}) : installation dans la copie": "Folders to share are missing from the project ({dirs}): installing in the copy",
   // http.ts
   "JSON invalide": "invalid JSON",

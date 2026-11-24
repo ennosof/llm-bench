@@ -4,33 +4,92 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>llm-bench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #f5f6f8; --surface: #fff; --surface-2: #f0f2f5; --border: #e1e4e9; --text: #1a1e24; --muted: #5d6877;
-    --accent: #4b45d6; --accent-soft: #eceeff; --ok: #17794a; --ok-soft: #e3f4ea; --bad: #be3a30; --bad-soft: #fcebe9;
-    --warn: #9a5c00; --warn-soft: #fff2db; --shadow: 0 1px 2px rgba(16, 24, 40, .06);
-    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    /* Style « Labo » : clair, dense, orienté données. */
+    --bg: #f6f7f9; --surface: #fff; --surface-2: #f1f3f6; --border: #e3e6eb; --text: #14171c; --muted: #5b6472;
+    --accent: #2f5bea; --accent-soft: #eef2fe; --ok: #1f7a4d; --ok-soft: #e4f3ea; --bad: #b4232c; --bad-soft: #fce9e6;
+    --warn: #a15c00; --warn-soft: #fff2db; --paid: #6a2fd8; --paid-soft: #f1eafe; --free: #0f6b63; --free-soft: #e3f4f1;
+    --shadow: 0 1px 2px rgba(20, 23, 28, .05);
+    --sans: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #111317; --surface: #1a1d23; --surface-2: #22262e; --border: #30353f; --text: #e7e9ee; --muted: #9aa3b2;
-      --accent: #8f8bff; --accent-soft: #2a2a4a; --ok: #4cc38a; --ok-soft: #173326; --bad: #f2756a; --bad-soft: #3b1f1d;
-      --warn: #f0b347; --warn-soft: #3a2c12; --shadow: none;
+      --bg: #101318; --surface: #171b21; --surface-2: #1f242c; --border: #2c323c; --text: #e7eaf0; --muted: #9aa4b2;
+      --accent: #7c9cff; --accent-soft: #1f2a4d; --ok: #4cc38a; --ok-soft: #173326; --bad: #f2756a; --bad-soft: #3b1f1d;
+      --warn: #f0b347; --warn-soft: #3a2c12; --paid: #c2a3ff; --paid-soft: #2e2346; --free: #4fd1c0; --free-soft: #12302d; --shadow: none;
     }
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 var(--sans); }
   button, input, select, textarea { font: inherit; color: inherit; }
-  header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 14px 20px; background: var(--surface); border-bottom: 1px solid var(--border); }
-  header h1 { font-size: 16px; margin: 0; }
-  header .meta { display: flex; flex-wrap: wrap; gap: 8px; color: var(--muted); font-size: 12.5px; }
-  nav { display: flex; gap: 4px; padding: 0 20px; background: var(--surface); border-bottom: 1px solid var(--border); overflow-x: auto; }
-  nav button { border: 0; background: none; padding: 10px 12px; color: var(--muted); border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; }
-  nav button.on { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
-  main { max-width: 1280px; margin: 0 auto; padding: 20px; display: grid; gap: 16px; }
+  /* Barre latérale (navigation + état) et contenu ; la barre passe au-dessus sur petit écran. */
+  .app { display: flex; flex-wrap: wrap; min-height: 100vh; }
+  .side { flex: 0 0 240px; width: 240px; background: var(--surface); border-right: 1px solid var(--border); padding: 18px 12px; display: flex; flex-direction: column; gap: 14px; position: sticky; top: 0; height: 100vh; overflow-y: auto; overflow-x: hidden;
+    transition: flex-basis .28s cubic-bezier(.4, 0, .2, 1), width .28s cubic-bezier(.4, 0, .2, 1), padding .28s; z-index: 10; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 2px 8px 6px; }
+  .brand .logo { width: 30px; height: 30px; border-radius: 8px; background: var(--text); color: var(--bg); display: grid; place-items: center; font: 600 13px var(--mono); flex: none; }
+  .brand b { display: block; font-size: 15px; }
+  .brand small { display: block; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
+  .brand > span:not(.logo) { min-width: 0; flex: 1; transition: opacity .2s; }
+  .side-toggle { flex: none; width: 28px; height: 28px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--muted); display: grid; place-items: center; cursor: pointer; transition: background .15s, color .15s, transform .28s cubic-bezier(.4, 0, .2, 1); }
+  .side-toggle:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+  .side-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .side-nav { display: flex; flex-direction: column; gap: 2px; }
+  .side-group { position: relative; }
+  .side-item .lbl { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: opacity .2s; }
+  .side-item .chev { flex: none; opacity: .55; transition: transform .25s cubic-bezier(.4, 0, .2, 1); }
+  .side-item.open .chev { transform: rotate(90deg); opacity: .9; }
+  .side-item svg:first-child { transition: transform .2s; }
+  .side-item:hover svg:first-child { transform: scale(1.12); }
+  .side-item.on::before { content: ""; position: absolute; left: -12px; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); animation: barIn .3s cubic-bezier(.4, 0, .2, 1); }
+  .side-item { position: relative; transition: background .15s, color .15s; }
+  /* Ouverture d'un sous-menu : le bloc se déplie puis les entrées apparaissent l'une après l'autre. */
+  .side-sub.enter { animation: subOpen .32s cubic-bezier(.4, 0, .2, 1); overflow: hidden; }
+  .side-sub.enter > button { animation: subItem .3s cubic-bezier(.4, 0, .2, 1) both; animation-delay: calc(var(--i) * 45ms + 60ms); }
+  @keyframes subOpen { from { max-height: 0; opacity: 0; margin-top: 0; margin-bottom: 0; } to { max-height: 320px; opacity: 1; } }
+  @keyframes subItem { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+  @keyframes barIn { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+  /* Barre repliée : icônes seules, sous-menu en menu flottant au survol. */
+  .app.side-collapsed .side { flex-basis: 64px; width: 64px; padding: 18px 10px; overflow: visible; }
+  .app.side-collapsed .brand { flex-direction: column; padding: 2px 0 6px; }
+  .app.side-collapsed .brand > span:not(.logo), .app.side-collapsed .side .meta { display: none; }
+  .app.side-collapsed .side-toggle { transform: rotate(180deg); }
+  .app.side-collapsed .side-item { justify-content: center; padding: 10px 0; }
+  .app.side-collapsed .side-item .lbl, .app.side-collapsed .side-item .chev { display: none; }
+  .app.side-collapsed .side-item.on::before { left: -10px; }
+  .app.side-collapsed .side-sub { display: none; position: absolute; left: calc(100% + 8px); top: 0; margin: 0; padding: 6px; min-width: 190px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: 0 8px 28px rgba(0, 0, 0, .18); z-index: 30; }
+  .app.side-collapsed .side-sub::before { content: attr(data-title); display: block; padding: 4px 10px 6px; font-size: 12px; font-weight: 600; color: var(--muted); }
+  .app.side-collapsed .side-group::after { content: ""; position: absolute; left: 100%; top: 0; width: 10px; height: 100%; }
+  .app.side-collapsed .side-group:hover .side-sub, .app.side-collapsed .side-group:focus-within .side-sub { display: flex; animation: popIn .18s cubic-bezier(.4, 0, .2, 1); }
+  @keyframes popIn { from { opacity: 0; transform: translateX(-6px) scale(.97); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .side, .side *, .side *::before { animation: none !important; transition: none !important; } }
+  .side-item { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: none; padding: 9px 10px; border-radius: 8px; color: #333a45; font-weight: 500; text-align: left; cursor: pointer; }
+  .side-item svg { flex: none; }
+  .side-item:hover { background: var(--surface-2); }
+  .side-item.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .side-sub { display: flex; flex-direction: column; gap: 1px; margin: 2px 0 6px 19px; padding-left: 10px; border-left: 2px solid var(--accent-soft); }
+  .side-sub button { border: 0; background: none; text-align: left; padding: 6px 10px; border-radius: 6px; color: var(--muted); cursor: pointer; display: flex; align-items: center; gap: 6px; }
+  .side-sub button:hover { background: var(--surface-2); color: var(--text); }
+  .side-sub button.on { color: var(--text); font-weight: 600; background: var(--surface-2); }
+  .side .meta { margin-top: auto; padding: 12px 8px 0; border-top: 1px solid var(--border); display: flex; flex-direction: column; align-items: flex-start; gap: 8px; color: var(--muted); font-size: 12.5px; }
+  .content { flex: 1 1 560px; min-width: 0; }
+  main { max-width: 1320px; margin: 0 auto; padding: 24px 32px 48px; display: grid; gap: 18px; }
+  @media (max-width: 860px) {
+    .side, .app.side-collapsed .side { flex: 1 1 100%; width: 100%; padding: 14px 16px; position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--border); }
+    .app.side-collapsed .brand { flex-direction: row; }
+    .app.side-collapsed .brand > span:not(.logo) { display: block; }
+    .app.side-collapsed .side-nav { display: none; }
+    .side-toggle { transform: rotate(90deg); }
+    .app.side-collapsed .side-toggle { transform: rotate(-90deg); }
+  }
+  @media (prefers-color-scheme: dark) { .side-item { color: var(--text); } }
   h2 { font-size: 15px; margin: 0; }
   h3 { font-size: 14px; margin: 0; }
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; box-shadow: var(--shadow); min-width: 0; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; box-shadow: var(--shadow); min-width: 0; }
   .card-h { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
   .grid2 { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 16px; }
   @media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } main { padding: 12px 16px; } }
@@ -46,6 +105,15 @@
   button.danger { color: var(--bad); }
   button:disabled { opacity: .5; cursor: not-allowed; }
   button.link { border: 0; background: none; color: var(--accent); padding: 0; cursor: pointer; }
+  /* Retour à une liste : bouton contouré avec flèche, bien visible au-dessus du titre. */
+  button.back { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 10px; margin-bottom: 4px;
+    border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text);
+    font-weight: 600; cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
+  button.back .arrow { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accent-soft); color: var(--accent); font-size: 14px; line-height: 1; transition: transform .15s; }
+  button.back:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  button.back:hover .arrow { transform: translateX(-2px); background: var(--surface); }
+  button.back:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   button.icon { border: 0; background: none; cursor: pointer; color: var(--muted); padding: 4px 6px; border-radius: 6px; }
   button.icon:hover { background: var(--surface-2); color: var(--text); }
   input[type=text], input[type=number], input[type=search], select, textarea { border: 1px solid var(--border); background: var(--surface); border-radius: 7px; padding: 6px 9px; min-width: 0; }
@@ -67,7 +135,7 @@
   .table-wrap { overflow-x: auto; }
   table { border-collapse: collapse; width: 100%; }
   th, td { text-align: left; padding: 8px 10px; border-top: 1px solid var(--border); vertical-align: top; }
-  th { font-size: 12px; font-weight: 600; color: var(--muted); border-top: 0; white-space: nowrap; }
+  th { font-size: 11.5px; font-weight: 600; color: var(--muted); border-top: 0; white-space: nowrap; text-transform: uppercase; letter-spacing: .04em; }
   td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   tr.clickable { cursor: pointer; }
   tr.clickable:hover td { background: var(--surface-2); }
@@ -86,6 +154,13 @@
   .picker-btn .v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .picker-pop { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 30; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: 6px; display: grid; gap: 4px; }
   .picker-pop[hidden], .picker-o[hidden], .picker [data-group][hidden] { display: none; }
+  /* <select> natif caché derrière la liste maison (il garde la valeur). */
+  .csel { display: inline-block; vertical-align: middle; min-width: 150px; }
+  .csel-native { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; overflow: hidden; }
+  .picker-btn { min-height: 34px; }
+  .picker-o:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  label.field > .csel { display: block; }
+  .logdock-h .picker-btn { background: #1f242c; color: #e7eaf0; border-color: #343b46; }
   .picker-pop input { width: 100%; }
   .picker-list { max-height: 320px; overflow: auto; }
   .picker-g { font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; padding: 8px 8px 4px; }
@@ -106,9 +181,11 @@
   details[open] > summary::before { transform: rotate(45deg); }
   details > summary:hover { border-color: var(--accent); box-shadow: 0 1px 4px color-mix(in srgb, var(--accent) 25%, transparent); }
   details > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  details[open] > summary { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); border-color: var(--accent); margin-bottom: 8px; }
+  details[open] > summary { background: color-mix(in srgb, var(--tc, var(--accent)) 16%, var(--surface)); border-color: var(--tc, var(--accent)); margin-bottom: 8px; }
   details > summary .chip, details > summary .mono { font-weight: 400; }
   details + details { margin-top: 6px; }
+  /* Détail ouvert : barre verticale qui couvre tout le sous-détail (couleur du bloc .trace parent, sinon accent). */
+  details[open] { border-left: 3px solid var(--tc, var(--accent)); padding-left: 10px; margin-left: 2px; }
   pre { margin: 0; padding: 10px 12px; background: var(--surface-2); border-radius: 8px; overflow: auto; max-height: 420px; font: 12.5px/1.5 var(--mono); white-space: pre-wrap; word-break: break-word; }
   pre.json .j-k { color: var(--accent, #2563eb); }
   pre.json .j-s { color: #15803d; }
@@ -147,6 +224,9 @@
   .overlay.center { justify-content: center; align-items: flex-start; padding: 40px 16px; overflow: auto; }
   .panel { background: var(--surface); width: min(720px, 100%); height: 100%; overflow: auto; padding: 20px; display: grid; gap: 18px; align-content: start; }
   .overlay.center .panel { height: auto; border-radius: 12px; width: min(820px, 100%); }
+  /* Détail d'un résultat : grande modale centrée, défilement interne (en-tête et ✕ toujours visibles). */
+  .overlay.center .panel.wide { width: min(1200px, 100%); max-height: calc(100vh - 80px); overflow: auto; padding-top: 0; box-shadow: 0 12px 40px rgba(0, 0, 0, .3); }
+  .panel.wide > .panel-h { position: sticky; top: 0; z-index: 1; background: var(--surface); padding: 20px 0 12px; border-bottom: 1px solid var(--border); }
   .panel-h { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
   .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
   .row > .grow { flex: 1 1 160px; }
@@ -168,32 +248,152 @@
   .seg button { border: 0; background: var(--surface); padding: 6px 14px; cursor: pointer; }
   .seg button + button { border-left: 1px solid var(--border); }
   .seg button.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-  .seg.lang button { padding: 2px 8px; font-size: 12px; }
+  /* Bascule de langue : centrée en bas de la barre latérale, pastille glissante sur la langue active. */
+  .lang-wrap { align-self: stretch; display: grid; justify-items: center; gap: 6px; padding-top: 4px; }
+  .lang-wrap .lang-t { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+  .lang-switch { position: relative; display: grid; grid-template-columns: 1fr 1fr; width: 100%; max-width: 200px; padding: 3px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); }
+  .lang-switch::before { content: ""; position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px); border-radius: 999px; background: var(--accent); box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 40%, transparent); transition: transform .25s cubic-bezier(.4, 0, .2, 1); }
+  .lang-switch.en::before { transform: translateX(100%); }
+  .lang-switch button { position: relative; z-index: 1; border: 0; background: none; padding: 6px 0; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; transition: color .2s; }
+  .lang-switch button:hover:not(.on) { color: var(--text); }
+  .lang-switch button.on { color: #fff; cursor: default; }
+  .lang-switch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .seg button:disabled { opacity: .45; cursor: not-allowed; }
   .ph-running { background: var(--ok-soft); color: var(--ok); }
   .ph-failed { background: var(--bad-soft); color: var(--bad); }
   .ph-stopped { background: var(--surface-2); color: var(--muted); }
   .ph-busy { background: var(--accent-soft); color: var(--accent); }
   .step { border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: grid; gap: 10px; }
+  /* Deux encadrés distincts dans le détail d'une étape : échange bench ↔ serveur, et appels LLM faits par le serveur. */
+  .trace { border: 1px solid var(--border); border-left: 4px solid var(--tc); border-radius: 8px; padding: 10px 12px; display: grid; gap: 8px; background: var(--surface); }
+  .trace.server { --tc: var(--accent); --tc-soft: var(--accent-soft); }
+  .trace.llm { --tc: var(--paid); --tc-soft: var(--paid-soft); }
+  .trace-h { display: flex; align-items: center; gap: 10px; margin: -10px -12px 0; padding: 8px 12px; background: var(--tc-soft); border-radius: 0 7px 0 0; }
+  .trace-h .ico { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--tc); color: var(--surface); font-size: 13px; font-weight: 700; }
+  .trace-h .t { font-size: 15px; font-weight: 700; color: var(--tc); }
+  .trace-h .sub { font-size: 12px; color: var(--muted); }
   .step-h { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: center; }
   .k-success { background: var(--ok-soft); color: var(--ok); }
   .k-info { background: var(--accent-soft); color: var(--accent); }
   .k-no_results { background: var(--warn-soft); color: var(--warn); }
   .k-error { background: var(--bad-soft); color: var(--bad); }
-  .t-free { background: var(--ok-soft); color: var(--ok); }
-  .t-paid { background: var(--warn-soft); color: var(--warn); }
+  .t-free { background: var(--free-soft); color: var(--free); font-weight: 600; }
+  .t-paid { background: var(--paid-soft); color: var(--paid); font-weight: 600; }
+  /* Tuiles d'indicateurs (rapports). */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+  .kpi .l { font-size: 12px; color: var(--muted); }
+  .kpi .v { font: 600 24px/1.25 var(--mono); }
+  .kpi .s { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Barre de score (classements). */
+  .sbar { display: flex; align-items: center; gap: 10px; min-width: 180px; }
+  .sbar .track { flex: 1; height: 8px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+  .sbar .track > div { height: 100%; border-radius: 99px; }
+  .sbar b { font: 600 13px var(--mono); width: 46px; text-align: right; }
+  .rank { font: 500 13px var(--mono); color: var(--muted); }
+  /* Carte réussi / échoué : lignes = modèles ou serveurs, colonnes = cas. */
+  .heat-t th.hcol { min-width: 120px; text-align: center; white-space: normal; }
+  .heat-t td { vertical-align: middle; }
+  .heat-t td.hcase { min-width: 240px; max-width: 420px; }
+  .heat-t td.hcase .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 420px; }
+  .heat-t td.hcell { text-align: center; padding: 5px 8px; }
+  .heat-t td.hcell button { width: 100%; min-width: 96px; height: 32px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 7px; color: #fff; font-weight: 700; cursor: pointer; }
+  .heat-t td.hcell button .t { font: 500 12px var(--mono); opacity: .92; }
+  .heat-t td.hcell button.pass { background: var(--ok); } .heat-t td.hcell button.fail { background: #b4530f; } .heat-t td.hcell button.error { background: var(--text); color: var(--bg); }
+  .heat-t td.hcell button.mix { background: linear-gradient(135deg, var(--ok) 50%, #b4530f 50%); }
+  .heat-t td.hcell button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .heat-t .none { color: var(--muted); }
+  .heat-t tbody tr:hover td { background: var(--surface-2); }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 6px; }
+  /* Lancer : fiches de modèles cochables, catégories de cas, panneau d'exécution. */
+  .runlay { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
+  .runlay > .mainc { flex: 999 1 520px; min-width: 0; display: grid; gap: 16px; }
+  .runlay > aside { flex: 1 1 300px; max-width: 400px; position: sticky; top: 16px; display: grid; gap: 14px; }
+  .mcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+  .mcard { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; min-width: 0; }
+  .mcard:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+  .mcard.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent-soft) 60%, var(--surface)); }
+  .mcard input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--accent); flex: none; }
+  .mcard .n { font: 500 13.5px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+  .mcard .m { font-size: 12px; color: var(--muted); display: block; }
+  .mgroup { font-size: 11.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; grid-column: 1 / -1; margin-top: 6px; display: flex; gap: 8px; align-items: center; }
+  .catrow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 11px 4px; border-top: 1px solid var(--border); }
+  .catrow:first-child { border-top: 0; }
+  .catrow input { width: 18px; height: 18px; accent-color: var(--accent); }
+  .catrow .name { font-weight: 600; min-width: 130px; }
+  .catrow .ids { flex: 1 1 220px; min-width: 0; font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .catrow .cnt { font: 13px var(--mono); }
+  .catcases { margin: 0 0 8px 30px; }
+  .est { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .est div { background: var(--surface-2); border-radius: 8px; padding: 10px 12px; min-width: 0; }
+  .est dt { font-size: 12px; color: var(--muted); }
+  .est dd { margin: 0; font: 600 19px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .big { width: 100%; justify-content: center; height: 46px; font-size: 15px; font-weight: 600; border-radius: 10px; }
+  /* Page Modèles : en-tête, pastilles de filtre, cartes du bas. */
+  .pagehead { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px; }
+  .pagehead h1 { margin: 0; font-size: 26px; letter-spacing: -.01em; }
+  .pagehead p { margin: 4px 0 0; color: var(--muted); }
+  .pills { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .pills button { height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; }
+  .pills button.on { background: var(--text); border-color: var(--text); color: var(--bg); font-weight: 600; }
+  .pills input[type=search] { margin-left: auto; min-width: 240px; height: 34px; }
+  .membar { display: flex; height: 10px; border-radius: 99px; overflow: hidden; background: var(--surface-2); }
+  .kv-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--border); }
+  .kv-row:first-of-type { border-top: 0; }
+  /* Passerelle : bascule gratuit / payant, bloc .env, colonnes appels + détail. */
+  .gwtoggle { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+  .gwt { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; min-height: 50px; padding: 0 16px; border: 0; border-radius: 9px; background: transparent; cursor: pointer; text-align: left; }
+  .gwt .l { font-weight: 600; } .gwt .m { font: 12px var(--mono); color: var(--muted); }
+  .gwt:hover:not(:disabled) { background: var(--surface-2); }
+  .gwt.on.paid { background: var(--paid); color: #fff; } .gwt.on.free { background: var(--free); color: #fff; }
+  .gwt.on .m { color: rgba(255,255,255,.85); }
+  .gwenv { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+  .gwenv pre.code { flex: 1 1 360px; margin: 0; background: #14171c; color: #e9edf2; }
+  .gwdl { margin: 0; display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 8px 12px; font-size: 13px; }
+  .gwdl dt { color: var(--muted); } .gwdl dd { margin: 0; overflow-wrap: anywhere; }
+  tr.gw-sel td { background: var(--accent-soft); } tr.gw-sel td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+  .gwdetail { display: grid; gap: 12px; }
+  /* Journal des serveurs en bas de page (fond sombre, comme un terminal). */
+  .logdock { background: #14171c; color: #d9dee5; border-radius: 12px; overflow: hidden; }
+  .logdock-h { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 12px 18px; border-bottom: 1px solid #2a2f37; }
+  .logdock-h h2 { color: #fff; font-size: 14px; }
+  .logdock-h .b, .logdock-h select { background: #1f242c; color: #e7eaf0; border-color: #343b46; }
+  .logdock pre { margin: 0; background: none; color: inherit; border-radius: 0; padding: 14px 18px; max-height: 420px; font-size: 12.5px; line-height: 1.6; }
+  .lg-b { color: #8b96a5; } .lg-e { color: #ff8f85; } .lg-w { color: #f2a65a; }
+  .logdock pre { scrollbar-color: #4a5260 #14171c; }
+  .logdock pre::-webkit-scrollbar { width: 10px; height: 10px; }
+  .logdock pre::-webkit-scrollbar-track { background: #14171c; }
+  .logdock pre::-webkit-scrollbar-thumb { background: #3a414c; border-radius: 99px; border: 2px solid #14171c; }
+  .logdock pre::-webkit-scrollbar-thumb:hover { background: #59616e; }
+  .logdock pre::-webkit-scrollbar-corner { background: #14171c; }
+  tr.dock-on td { background: var(--accent-soft); }
+  tr.dock-on td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+  /* Routage de la passerelle : application → passerelle → fournisseur. */
+  .route { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0; }
+  .route .node { flex: 1 1 200px; min-width: 0; border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--surface-2); display: grid; gap: 2px; }
+  .route .node.gw { border-color: var(--accent); background: var(--accent-soft); }
+  .route .node .k { font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .route .node .t { font: 600 14px var(--mono); overflow-wrap: anywhere; }
+  .route .node .d { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+  .route .arrow { flex: 0 1 150px; min-width: 70px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 2px; padding: 0 8px; color: var(--muted); font-size: 11.5px; text-align: center; }
+  .route .arrow::before { content: ""; display: block; width: 100%; height: 2px; background: linear-gradient(90deg, var(--border), var(--accent)); }
+  .route .arrow::after { content: "▶"; color: var(--accent); font-size: 10px; margin-top: -9px; align-self: flex-end; }
+  @media (max-width: 700px) { .route .arrow { flex-basis: 100%; padding: 6px 0; } }
   .group-h { padding: 6px 10px; font-size: 12px; font-weight: 600; color: var(--muted); background: var(--surface-2); display: flex; justify-content: space-between; gap: 8px; }
   .gw-target { font-size: 18px; font-weight: 600; }
 </style>
 </head>
 <body>
-<header>
-  <h1 id="title">llm-bench</h1>
-  <div class="menu" id="menu"></div>
-  <div class="meta" id="meta"></div>
-</header>
-<nav id="tabs"></nav>
-<main id="view"></main>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><span class="logo" aria-hidden="true">lb</span><span><b>llm-bench</b><small id="title"></small></span>
+      <button type="button" class="side-toggle" id="sideToggle" data-action="toggleSide" aria-controls="menu"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button></div>
+    <nav class="side-nav" id="menu" aria-label="Navigation"></nav>
+    <div class="meta" id="meta"></div>
+  </aside>
+  <div class="content"><main id="view"></main></div>
+</div>
 <div id="layer"></div>
 <div id="toasts"></div>
 
@@ -206,6 +406,114 @@
 // Clés manquantes : npm run i18n:check.
 // i18n:start
 const UI_EN = {
+  "Prompt système ({chars} caractères)": "System prompt ({chars} characters)",
+  "« prompt système n° {n} · {chars} caractères : voir le dépliant ci-dessous »": "“system prompt #{n} · {chars} characters: see the section below”",
+  "Prompt système n° {n} ({chars} caractères)": "System prompt #{n} ({chars} characters)",
+  "Cliquer pour afficher le détail": "Click to show the details",
+  "URL réelle": "Actual URL",
+  "Appelé par": "Called by",
+  "Requête reçue du serveur": "Request received from the server",
+  "En-têtes": "Headers",
+  "Requête envoyée au fournisseur": "Request sent to the provider",
+  "Réponse du fournisseur": "Provider response",
+  "Pas de détail HTTP pour cet appel.": "No HTTP details for this call.",
+  "Un endpoint fixe pour votre projet ; le modèle réel se choisit ici.": "A fixed endpoint for your project; the actual model is chosen here.",
+  "Bascule gratuit ou payant": "Free or paid switch",
+  "Brancher le projet": "Connect the project",
+  "Copier": "Copy",
+  "Copie impossible : sélectionnez le texte": "Copy failed: select the text",
+  "Cliquer pour masquer le journal": "Click to hide the log",
+  "Cliquer pour afficher le journal en bas": "Click to show the log below",
+  "Masquer le journal": "Hide the log",
+  "Ouvrir dans une fenêtre": "Open in a window",
+  "Afficher le journal en bas de page": "Show the log at the bottom of the page",
+  "Serveur du journal": "Log server",
+  "local": "local",
+  "cloud": "cloud",
+  "{score} · {lat}": "{score} · {lat}",
+  "jamais testé": "never tested",
+  "Catégorie {name}": "Category {name}",
+  "sans catégorie": "no category",
+  "détail": "details",
+  "Nouvelle campagne": "New campaign",
+  "Prompt système {version} envoyé directement aux modèles, réponses vérifiées cas par cas.": "System prompt {version} sent directly to the models, responses checked case by case.",
+  "1. Modèles": "1. Models",
+  "{n} sélectionné(s)": "{n} selected",
+  "2. Cas de test": "2. Test cases",
+  "{n} sur {total}": "{n} of {total}",
+  "Tout cocher": "Select all",
+  "Seulement les échecs du dernier rapport": "Only the failures of the last report",
+  "3. Exécution": "3. Run",
+  "Appels": "Calls",
+  "{n} modèle(s) jamais testé(s) : non comptés": "{n} never-tested model(s): not counted",
+  "d'après les latences médianes des campagnes passées": "based on median latencies of past campaigns",
+  "Durée estimée": "Estimated time",
+  "d'après le coût moyen par appel des campagnes passées": "based on the average cost per call of past campaigns",
+  "Coût estimé": "Estimated cost",
+  "Les modèles locaux restent à la suite ; seuls les appels cloud partent en parallèle.": "Local models stay sequential; only cloud calls run in parallel.",
+  "Tout s'exécute à la suite : les latences sont directement comparables.": "Everything runs sequentially: latencies are directly comparable.",
+  "échoué": "failed",
+  "variable selon les runs": "varies across runs",
+  "Classement": "Ranking",
+  "trié par score": "sorted by score",
+  "Latence méd.": "Median latency",
+  "cliquer une case pour le détail": "click a cell for details",
+  "cliquer une case pour le détail des étapes": "click a cell for step details",
+  "Détails techniques par modèle (tokens, coût, mémoire, contexte)": "Technical details per model (tokens, cost, memory, context)",
+  "Détail par cas": "Details per case",
+  "clé OK": "key OK",
+  "{n} modèle(s) utilisable(s) · {l} local(aux), {c} cloud": "{n} usable model(s) · {l} local, {c} cloud",
+  "Télécharger un modèle local": "Download a local model",
+  "Rechercher un modèle…": "Search a model…",
+  "Rechercher un modèle": "Search a model",
+  "Classement sur vos cas": "Ranking on your cases",
+  "(toutes les campagnes du bench prompt)": "(all prompt bench campaigns)",
+  "score = cas réussis · latence médiane · débit en sortie": "score = passed cases · median latency · output throughput",
+  "Réponses": "Responses",
+  "État": "Status",
+  "Préparer une campagne du bench prompt avec ce modèle": "Prepare a prompt bench campaign with this model",
+  "Aucun modèle ne correspond.": "No model matches.",
+  "Ollama · mémoire": "Ollama · memory",
+  "{n} modèle(s) installé(s)": "{n} installed model(s)",
+  "Répartition de l'espace disque des modèles": "Disk space per model",
+  "Contexte du modèle chargé : {n} tokens": "Loaded model context: {n} tokens",
+  "Aucun modèle chargé en mémoire pour l'instant.": "No model loaded in memory yet.",
+  "Clés des fournisseurs cloud": "Cloud provider keys",
+  "clé interface · OK": "interface key · OK",
+  "clé config · OK": "config key · OK",
+  "Aucun fournisseur cloud.": "No cloud provider.",
+  "Détails techniques par serveur (latences, appels LLM, tokens, coût)": "Technical details per server (latency, LLM calls, tokens, cost)",
+  "{n} cas en échec sélectionné(s)": "{n} failing case(s) selected",
+  "Aucun échec dans le dernier rapport": "No failure in the last report",
+  "Meilleur score": "Best score",
+  "Meilleur gratuit": "Best free",
+  "Le plus rapide": "Fastest",
+  "médiane · {model}": "median · {model}",
+  "{n} réponses": "{n} responses",
+  "Coût de la campagne": "Campaign cost",
+  "aucun prix renseigné": "no price set",
+  "Réponse la plus rapide": "Fastest response",
+  "médiane par requête · {name}": "median per request · {name}",
+  "aucune erreur": "no errors",
+  "Dernière réponse de chacun. JSON réindenté, clés triées : seules les vraies différences ressortent.": "Latest response of each. JSON re-indented, keys sorted: only real differences stand out.",
+  "Mêmes valeurs partout.": "Same values everywhere.",
+  "Sans JSON (non comparés champ par champ) : {list}.": "Without JSON (not compared field by field): {list}.",
+  "{n} appel(s) LLM": "{n} LLM call(s)",
+  "Comparer les réponses des serveurs": "Compare server responses",
+  "Étape": "Step",
+  "Moins de deux serveurs ont joué cette étape.": "Fewer than two servers ran this step.",
+  "Routage": "Routing",
+  "dernier appel : {time} · HTTP {status} · {latency}": "last call: {time} · HTTP {status} · {latency}",
+  "Votre application": "Your application",
+  "projet": "project",
+  "la passerelle": "the gateway",
+  "endpoint compatible OpenAI": "OpenAI-compatible endpoint",
+  "requête OpenAI": "OpenAI request",
+  "Passerelle llm-bench": "llm-bench gateway",
+  "port {port}": "port {port}",
+  "modèle remplacé · clé ajoutée": "model replaced · key added",
+  "aucun modèle choisi": "no model chosen",
+  "Comparer les réponses des serveurs sur ce cas, étape par étape : champs JSON qui diffèrent et diff du message par rapport à un serveur de référence": "Compare server responses on this case, step by step: differing JSON fields and message diff against a reference server",
   "génération": "generation",
   "outils": "tools",
   "(vide)": "(empty)",
@@ -232,6 +540,10 @@ const UI_EN = {
   "Cas de test": "Test cases",
   "Prompt système": "System prompt",
   "Gratuits": "Free",
+  "Statistiques": "Statistics",
+  "Afficher le menu": "Show menu",
+  "Masquer le menu": "Hide menu",
+  "Liste des modèles": "Model list",
   "Payants": "Paid",
   "Serveurs": "Servers",
   "Variables": "Variables",
@@ -271,9 +583,6 @@ const UI_EN = {
   "Répétitions par cas": "Runs per case",
   "Appels simultanés vers les modèles distants (cloud). Les modèles locaux (Ollama, localhost) restent toujours l'un après l'autre. 1 = tout à la suite.": "Simultaneous calls to remote (cloud) models. Local models (Ollama, localhost) always run one after another. 1 = all sequential.",
   "Parallélisme": "Parallelism",
-  "{m} modèle(s) × {c} cas × {r} = {calls} appel(s)": "{m} model(s) × {c} case(s) × {r} = {calls} call(s)",
-  "jusqu'à {n} en parallèle (modèles locaux à la suite)": "up to {n} in parallel (local models sequentially)",
-  "{n} modèle(s) payant(s)": "{n} paid model(s)",
   "Lancer la campagne": "Run campaign",
   "Campagne en cours": "Campaign running",
   "Arrêter": "Stop",
@@ -288,12 +597,12 @@ const UI_EN = {
   "Cas": "Cases",
   "{n} run(s)": "{n} run(s)",
   "Supprimer": "Delete",
-  "Tous les rapports": "All reports",
+  "Retour à la liste des rapports": "Back to all reports",
+  "Raccourci : Échap": "Shortcut: Esc",
   "Rapport du {date}": "Report of {date}",
   "{c} cas × {r} run(s)": "{c} case(s) × {r} run(s)",
   "Rejouer les échecs ({n})": "Replay failures ({n})",
   "Télécharger JSON": "Download JSON",
-  "Synthèse par modèle": "Summary per model",
   "Modèle": "Model",
   "Score": "Score",
   "JSON valide": "Valid JSON",
@@ -313,6 +622,9 @@ const UI_EN = {
   "Résultats par cas": "Results per case",
   "cliquer un résultat pour le détail": "click a result for details",
   "Échecs seulement": "Failures only",
+  "Aucun cas ne correspond aux filtres.": "No case matches the filters.",
+  "Afficher uniquement les résultats « {label} » ({n} cas)": "Show only “{label}” results ({n} cases)",
+  "Masqué par le filtre de statut": "Hidden by the status filter",
   "Comparer les réponses des modèles sur ce cas : champs JSON qui diffèrent et diff ligne à ligne par rapport à un modèle de référence": "Compare the models' answers on this case: differing JSON fields and a line-by-line diff against a reference model",
   "Comparer les réponses": "Compare answers",
   "réussi": "passed",
@@ -324,13 +636,10 @@ const UI_EN = {
   "{n} lignes identiques": "{n} identical lines",
   "{n} ligne identique": "{n} identical line",
   "Référence": "Reference",
-  "Dernière réponse de chaque modèle. JSON réindenté, clés triées : seules les vraies différences ressortent.": "Latest answer from each model. JSON re-indented with sorted keys: only real differences stand out.",
   "Champs qui diffèrent": "Differing fields",
   "Champ": "Field",
   "réf.": "ref.",
   "absent": "missing",
-  "Mêmes valeurs dans tous les modèles.": "Same values across all models.",
-  "Sans JSON valide (non comparés champ par champ) : {list}.": "Without valid JSON (not compared field by field): {list}.",
   "Différences avec la référence": "Differences from the reference",
   "lignes": "lines",
   "identique": "identical",
@@ -430,10 +739,6 @@ const UI_EN = {
   "Chargement des variantes…": "Loading variants…",
   "Variante": "Variant",
   "Aucune variante téléchargeable en local (modèle cloud uniquement).": "No variant downloadable locally (cloud-only model).",
-  "Modèle actuel de la passerelle": "Current gateway model",
-  "profil {name}": "profile {name}",
-  "aucun : choisir un profil ou un modèle": "none: choose a profile or a model",
-  "choisi le {date}": "chosen on {date}",
   "Bascule vers le dernier modèle utilisé dans l'offre (sinon le profil de la config)": "Switches to the last model used in this tier (otherwise the config profile)",
   "Gratuit": "Free",
   "Payant": "Paid",
@@ -441,13 +746,8 @@ const UI_EN = {
   "aucun modèle payant : en choisir un dans la liste ci-dessous": "no paid model: pick one from the list below",
   "Profils de la config :": "Config profiles:",
   "Offre": "Tier",
-  "Toutes": "All",
-  "Gratuites": "Free",
-  "Payantes": "Paid",
   "Autre modèle": "Other model",
   "Utiliser ce modèle": "Use this model",
-  "Brancher un projet sur la passerelle": "Connect a project to the gateway",
-  "La passerelle est un endpoint compatible OpenAI. Le projet l'appelle comme son fournisseur habituel ; le modèle réel est celui choisi ici, remplacé dans chaque requête (paramètres adaptés au fournisseur, clé API ajoutée par le bench).": "The gateway is an OpenAI-compatible endpoint. The project calls it like its usual provider; the actual model is the one chosen here, swapped into every request (parameters adapted to the provider, API key added by the bench).",
   "la vraie clé est ajoutée par la passerelle": "the real key is added by the gateway",
   "n'importe quel nom : remplacé par la passerelle": "any name: replaced by the gateway",
   "En ligne de commande, sur une passerelle déjà lancée :": "From the command line, on a running gateway:",
@@ -639,7 +939,6 @@ const UI_EN = {
   "{done}/{total} cas": "{done}/{total} cases",
   "Rapports serveurs": "Server reports",
   "Score par serveur": "Score per server",
-  "Synthèse par serveur": "Summary per server",
   "latences par requête (étapes en erreur exclues)": "latencies per request (failed steps excluded)",
   "Vérifs OK": "Checks OK",
   "Échecs": "Failures",
@@ -679,6 +978,8 @@ const UI_EN = {
   "Étape (tour de conversation suivant)": "Step (next conversation turn)",
   "Aucun appel LLM enregistré pour cette étape.": "No LLM call recorded for this step.",
   "Appels LLM du serveur ({n})": "Server LLM calls ({n})",
+  "Échange entre le bench et le serveur testé": "Exchange between the bench and the server under test",
+  "Requêtes faites par le serveur au modèle pendant cette étape": "Requests the server made to the model during this step",
   "Messages envoyés au modèle": "Messages sent to the model",
   "prompt système ({n} caractères) — afficher": "system prompt ({n} characters) — show",
   "Réponse du modèle": "Model response",
@@ -780,14 +1081,107 @@ const tr = (fr, params) => {
   return params ? text.replace(/\{(\w+)\}/g, (m, k) => (k in params ? String(params[k]) : m)) : text;
 };
 document.documentElement.lang = LANG;
+/** Place une liste déroulante en position fixe sous son bouton (au-dessus s'il manque de place). */
+function placePop(anchor, pop, minWidth = 0) {
+  // Position fixe : la liste n'est pas coupée par un tableau ou une carte à défilement.
+  const r = anchor.getBoundingClientRect();
+  const below = innerHeight - r.bottom - 12;
+  const up = below < 220 && r.top > below;
+  Object.assign(pop.style, { position: "fixed", left: `${Math.min(r.left, innerWidth - Math.max(r.width, minWidth) - 8)}px`, width: `${Math.max(r.width, minWidth)}px`, right: "auto" });
+  if (up) { pop.style.top = "auto"; pop.style.bottom = `${innerHeight - r.top + 4}px`; }
+  else { pop.style.bottom = "auto"; pop.style.top = `${r.bottom + 4}px`; }
+  const list = pop.querySelector(".picker-list");
+  if (list) list.style.maxHeight = `${Math.max(160, Math.min(320, (up ? r.top : below) - (pop.querySelector("input") ? 60 : 16)))}px`;
+}
+
+/**
+ * Listes déroulantes : le <select> natif (dessiné par le système, non stylable sous macOS) est caché et
+ * remplacé par un bouton + une liste au style de l'interface. Le <select> garde la valeur : choisir une
+ * option met à jour sa valeur et déclenche « change », donc les actions et la lecture des formulaires
+ * existantes fonctionnent sans changement.
+ */
+function enhanceSelect(sel) {
+  if (sel.dataset.enhanced || sel.multiple || sel.size > 1) return;
+  sel.dataset.enhanced = "1";
+  const wrap = document.createElement("span");
+  wrap.className = "picker csel";
+  wrap.dataset.picker = "";
+  if (sel.style.cssText) wrap.style.cssText = sel.style.cssText;
+  sel.parentNode.insertBefore(wrap, sel);
+  wrap.appendChild(sel);
+  sel.classList.add("csel-native");
+  sel.tabIndex = -1;
+  sel.setAttribute("aria-hidden", "true");
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "picker-btn";
+  btn.setAttribute("aria-haspopup", "listbox");
+  btn.setAttribute("aria-expanded", "false");
+  const label = sel.getAttribute("aria-label") || sel.closest("label")?.firstChild?.textContent?.trim();
+  if (label) btn.setAttribute("aria-label", label);
+  if (sel.id) btn.dataset.for = sel.id;
+  const pop = document.createElement("div");
+  pop.className = "picker-pop";
+  pop.hidden = true;
+  wrap.append(btn, pop);
+
+  const current = () => sel.options[sel.selectedIndex];
+  const paint = () => {
+    btn.disabled = sel.disabled;
+    btn.innerHTML = `<span class="v">${esc(current()?.textContent ?? "")}</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true" style="flex:none;opacity:.6"><path d="M6 9l6 6 6-6"/></svg>`;
+  };
+  const optionHtml = (o) => `<button type="button" class="picker-o ${o.selected ? "on" : ""}" role="option" aria-selected="${o.selected}" data-v="${esc(o.value)}" ${o.disabled ? "disabled" : ""}>${esc(o.textContent)}</button>`;
+  const open = () => {
+    document.querySelectorAll(".picker-pop:not([hidden])").forEach((p) => { p.hidden = true; });
+    const many = sel.options.length > 10;
+    pop.innerHTML = `${many ? `<input type="search" placeholder="${esc(tr("Filtrer…"))}" autocomplete="off">` : ""}<div class="picker-list" role="listbox">${[...sel.children].map((c) =>
+      c.tagName === "OPTGROUP" ? `<div data-group><div class="picker-g">${esc(c.label)}</div>${[...c.children].map(optionHtml).join("")}</div>` : `<div data-group>${optionHtml(c)}</div>`).join("")}</div>`;
+    pop.hidden = false;
+    btn.setAttribute("aria-expanded", "true");
+    placePop(btn, pop, 180);
+    const q = pop.querySelector("input");
+    if (q) {
+      q.addEventListener("input", () => {
+        const t = q.value.trim().toLowerCase();
+        pop.querySelectorAll(".picker-o").forEach((o) => { o.hidden = !!t && !o.textContent.toLowerCase().includes(t); });
+      });
+      q.focus();
+    } else (pop.querySelector(".picker-o.on") || pop.querySelector(".picker-o"))?.focus();
+    pop.querySelector(".picker-o.on")?.scrollIntoView({ block: "nearest" });
+  };
+  btn.addEventListener("click", () => (pop.hidden ? open() : (pop.hidden = true)));
+  btn.addEventListener("keydown", (e) => { if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); open(); } });
+  pop.addEventListener("click", (e) => {
+    const o = e.target.closest(".picker-o");
+    if (!o || o.disabled) return;
+    pop.hidden = true;
+    btn.setAttribute("aria-expanded", "false");
+    btn.focus();
+    if (sel.value === o.dataset.v) return;
+    sel.value = o.dataset.v;
+    paint();
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  paint();
+}
+// Toute liste ajoutée à la page (rendu, fenêtres, panneaux) est remplacée dès son insertion.
+new MutationObserver(() => document.querySelectorAll("select:not([data-enhanced])").forEach(enhanceSelect))
+  .observe(document.documentElement, { childList: true, subtree: true });
+
 /** Type d'un appel LLM capturé : codes du bench traduits (anciens enregistrements anglais compris), noms de la config tels quels. */
 const callKindLabel = (k) => ({ "génération": tr("génération"), generation: tr("génération"), outils: tr("outils"), tools: tr("outils") }[k] ?? k);
-const langSwitch = () => `<span class="seg lang">${["fr", "en"].map((l) => `<button type="button" class="${LANG === l ? "on" : ""}" data-action="setLang" data-v="${l}">${l.toUpperCase()}</button>`).join("")}</span>`;
+const langSwitch = () => `<div class="lang-wrap">
+  <span class="lang-t"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>${LANG === "fr" ? "Langue" : "Language"}</span>
+  <div class="lang-switch ${LANG}" role="group" aria-label="${LANG === "fr" ? "Langue" : "Language"}">${[["fr", "Français"], ["en", "English"]].map(([l, name]) => `<button type="button" class="${LANG === l ? "on" : ""}" data-action="setLang" data-v="${l}" lang="${l}" aria-pressed="${LANG === l}">${name}</button>`).join("")}</div>
+</div>`;
 
 // =============================================================================================
 // Utilitaires
 // =============================================================================================
 const $ = (s, el = document) => el.querySelector(s);
+/** Statut d'un modèle chargé, avec la mémoire qu'il occupe : « en mémoire (4.7 Go) ». */
+const inMemory = (m) => tr("en mémoire") + (m.memory ? ` (${fmt.gb(m.memory)})` : "");
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 /** Texte JSON (éventuellement entre ```json … ```) réindenté ; tout autre texte inchangé. */
 const prettyJson = (text) => {
@@ -805,6 +1199,28 @@ const jsonHtml = (v) => {
 const jsonPre = (v) => `<pre class="json">${jsonHtml(v)}</pre>`;
 
 /** Détail HTTP d'un appel LLM relayé : URL réelle, port, clé, requêtes et réponse complètes. */
+/**
+ * Corps de requête sans ses prompts système (rôle system / developer) : le contenu est remplacé par un
+ * repère, et les textes sont renvoyés à part pour être affichés dans un dépliant.
+ */
+function hideSystemPrompts(body) {
+  if (!body || typeof body !== "object" || !Array.isArray(body.messages)) return { body, prompts: [] };
+  const prompts = [];
+  const messages = body.messages.map((m) => {
+    if (!["system", "developer"].includes(m?.role)) return m;
+    const text = typeof m.content === "string" ? m.content : JSON.stringify(m.content, null, 2);
+    prompts.push(text);
+    return { ...m, content: tr("« prompt système n° {n} · {chars} caractères : voir le dépliant ci-dessous »", { n: prompts.length, chars: text.length.toLocaleString(LOCALE) }) };
+  });
+  return { body: { ...body, messages }, prompts };
+}
+
+/** Corps JSON d'une requête, prompts système repliés. */
+function requestBody(body) {
+  const { body: shown, prompts } = hideSystemPrompts(body);
+  return `${jsonPre(shown)}${prompts.map((p, i) => `<details><summary class="small">${tr("Prompt système n° {n} ({chars} caractères)", { n: i + 1, chars: p.length.toLocaleString(LOCALE) })}</summary><pre>${esc(p)}</pre></details>`).join("")}`;
+}
+
 function httpExchange(c) {
   const h = c.http;
   if (!h) return "";
@@ -820,9 +1236,9 @@ function httpExchange(c) {
       <tr><th>${tr("Réponse")}</th><td>HTTP ${r.status}${r.statusText ? ` ${esc(r.statusText)}` : ""} · ${tr("{n} octets", { n: r.bytes.toLocaleString(LOCALE) })} · ${fmt.s(c.latencyMs)}</td></tr>
     </table>
     <details><summary class="small">${tr("Requête reçue du serveur — en-têtes")}</summary>${jsonPre(i.headers)}</details>
-    <details><summary class="small">${tr("Requête reçue du serveur — corps")}</summary>${jsonPre(i.body)}</details>
+    <details><summary class="small">${tr("Requête reçue du serveur — corps")}</summary>${requestBody(i.body)}</details>
     <details><summary class="small">${tr("Requête envoyée au fournisseur — en-têtes")}</summary>${jsonPre(u.headers)}</details>
-    <details open><summary class="small">${tr("Requête envoyée au fournisseur — corps")}</summary>${jsonPre(u.body)}</details>
+    <details open><summary class="small">${tr("Requête envoyée au fournisseur — corps")}</summary>${requestBody(u.body)}</details>
     <details><summary class="small">${tr("Réponse du fournisseur — en-têtes")}</summary>${jsonPre(r.headers)}</details>
     <details open><summary class="small">${tr("Réponse du fournisseur — corps")}${Array.isArray(r.body) && c.stream ? ` (${tr("{n} événements SSE", { n: r.body.length })})` : ""}</summary>${jsonPre(r.body)}</details>
   </div>`;
@@ -870,6 +1286,9 @@ async function guard(fn) {
 // =============================================================================================
 const state = {
   tab: store.get("tab", "run"),
+  leaderboard: [],
+  openCats: new Set(),
+  lbQuery: "",
   status: null,
   models: [],
   cases: [],
@@ -886,6 +1305,7 @@ const state = {
   libraryQuery: "",
   tags: {},
   onlyFailures: false,
+  heatFilter: { cat: null, status: "" }, // filtres de « Résultats par cas » du rapport prompt (cat null : toutes)
   replaying: new Set(),
   selModels: new Set(store.get("selModels", [])),
   selCases: store.get("selCases", null),
@@ -914,9 +1334,13 @@ const state = {
   mLastFinished: null,
   mReplaying: new Set(),
   mOnlyFailures: false,
+  mHeatFilter: { cat: null, status: "" }, // filtres de « Résultats par cas » du rapport serveur (cat null : toutes)
   selServers: new Set(store.get("selServers", [])),
   mSelCases: store.get("mSelCases", null),
   mFilter: { q: "", category: "" },
+  dockLog: null,
+  dockFor: null,
+  dockText: "",
   mRunName: "",
   mRuns: 1,
   mParallel: store.get("mParallel", 1),
@@ -926,7 +1350,10 @@ const state = {
   newServer: { model: "", name: "", linkModules: false, ...store.get("newServer", {}) },
   changingModel: null,
   creating: false,
-  modtab: store.get("modtab", "free"),
+  modtab: store.get("modtab", "free"), // offre affichée dans « Liste des modèles »
+  sideCollapsed: store.get("sideCollapsed", false), // barre latérale repliée (icônes seules)
+  subFolded: false, // sous-menu du menu actif replié (clic sur le menu déjà ouvert)
+  modview: store.get("modview", "stats"), // sous-page du menu Modèles : stats | list
   provDraft: null, // formulaire « ajouter / modifier un modèle payant »
   projectEnv: null,
   keyDraft: null, // clé d'un fournisseur de la config
@@ -941,7 +1368,9 @@ const state = {
   savingEnv: false,
 };
 const LLM_TABS = [["run", tr("Lancer")], ["reports", tr("Rapports")], ["cases", tr("Cas de test")], ["prompt", tr("Prompt système")]];
-const MODEL_TABS = [["free", tr("Gratuits")], ["paid", tr("Payants")]];
+const MODEL_TABS = [["stats", tr("Statistiques")], ["list", tr("Liste des modèles")]];
+/** Liste des modèles gratuits affichée (catalogue Ollama, téléchargements). */
+const freeListShown = () => state.menu === "models" && state.modview === "list" && state.modtab === "free";
 const MCP_TABS = [["servers", tr("Serveurs")], ["run", tr("Lancer")], ["reports", tr("Rapports")], ["cases", tr("Cas de test")], ["env", tr("Variables")]];
 
 const catChip = (c) => (c ? `<span class="chip">${esc(c)}</span>` : "");
@@ -982,6 +1411,7 @@ async function loadCases() {
   if (state.selCases === null) state.selCases = state.cases.map((c) => c.id);
 }
 async function loadReports() { state.reports = await api("/api/reports"); }
+async function loadLeaderboard() { state.leaderboard = await api("/api/leaderboard").catch(() => []); }
 async function loadReport(id) { state.report = await api("/api/reports/" + id); }
 
 function renderMeta() {
@@ -1002,26 +1432,69 @@ function renderMeta() {
 // =============================================================================================
 // Rendu principal
 // =============================================================================================
+/** Icône d'un menu de la barre latérale (trait, couleur du texte). */
+const MENU_ICONS = {
+  models: '<rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/>',
+  llm: '<path d="M4 19h16M7 15V9M12 15V5M17 15v-3"/>',
+  mcp: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6"/>',
+  gw: '<path d="M4 12h16M14 6l6 6-6 6"/>',
+};
+const menuIcon = (id) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${MENU_ICONS[id] || ""}</svg>`;
+
+const CHEVRON = '<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+
+/** Barre latérale : un bouton par menu, les onglets du menu actif imbriqués dessous (animés à l'ouverture). */
+function renderSide(tabs) {
+  const open = !!tabs && !state.subFolded;
+  const key = open ? state.menu : "";
+  const enter = key && key !== renderSide.last; // n'anime que si le sous-menu vient de s'ouvrir, pas à chaque rendu
+  renderSide.last = key;
+  let i = 0;
+  const items = open ? tabs.replace(/<button /g, () => `<button style="--i:${i++}" `) : "";
+  $("#menu").innerHTML = MENUS().map(([id, label, sub]) => `
+    <div class="side-group">
+      <button type="button" class="side-item ${id === state.menu ? "on" : ""} ${id === state.menu && open ? "open" : ""}" data-action="menu" data-menu="${id}" title="${esc(label)} — ${esc(sub)}" ${id === state.menu ? 'aria-current="page"' : ""} ${id === state.menu && tabs ? `aria-expanded="${open}"` : ""}>${menuIcon(id)}<span class="lbl">${label}</span>${id === state.menu && tabs ? CHEVRON : ""}</button>
+      ${id === state.menu && open ? `<div class="side-sub ${enter ? "enter" : ""}" data-title="${esc(label)}">${items}</div>` : ""}
+    </div>`).join("");
+  const collapsed = !!state.sideCollapsed;
+  $(".app").classList.toggle("side-collapsed", collapsed);
+  const t = $("#sideToggle");
+  t.title = collapsed ? tr("Afficher le menu") : tr("Masquer le menu");
+  t.setAttribute("aria-label", t.title);
+  t.setAttribute("aria-expanded", String(!collapsed));
+}
+
+/** Réécrit la vue en gardant le champ actif (focus et curseur) : la saisie continue sans clic. */
+function setView(html) {
+  const focused = document.activeElement;
+  const focusId = focused && focused.id && $("#view").contains(focused) ? focused.id : null;
+  const caret = focusId && "selectionStart" in focused ? focused.selectionStart : null;
+  $("#view").innerHTML = html;
+  if (focusId) {
+    const el = document.getElementById(focusId);
+    if (el) { el.focus(); if (caret != null && el.setSelectionRange) try { el.setSelectionRange(caret, caret); } catch {} }
+  }
+}
+
 function render() {
   const mcp = state.menu === "mcp";
   if (state.menu === "llm" && !state.status?.prompt) state.tab = "prompt"; // rien d'autre sans prompt système
   const current = mcp ? state.mtab : state.tab;
-  $("#menu").innerHTML = MENUS().map(([id, label, sub]) => `<button data-action="menu" data-menu="${id}" class="${id === state.menu ? "on" : ""}">${label}<small>${sub}</small></button>`).join("");
   if (state.menu === "gw") {
-    $("#tabs").innerHTML = "";
+    renderSide("");
     renderMeta();
     $("#view").innerHTML = viewGateway();
     return;
   }
   if (state.menu === "models") {
-    $("#tabs").innerHTML = MODEL_TABS.map(([id, label]) => `<button data-action="modtab" data-tab="${id}" class="${id === state.modtab ? "on" : ""}">${label}</button>`).join("");
+    renderSide(MODEL_TABS.map(([id, label]) => `<button type="button" data-action="modview" data-tab="${id}" class="${id === state.modview ? "on" : ""}">${label}</button>`).join(""));
     renderMeta();
-    $("#view").innerHTML = state.modtab === "paid" ? viewPaidModels() : viewFreeModels();
+    setView(state.modview === "list" ? modelsList() : modelsOverview());
     return;
   }
   const busyTab = mcp ? state.mActive : state.active;
-  $("#tabs").innerHTML = (mcp ? MCP_TABS : LLM_TABS.filter(([id]) => state.status?.prompt || id === "prompt")).map(([id, label]) =>
-    `<button data-action="${mcp ? "mtab" : "tab"}" data-tab="${id}" class="${id === current ? "on" : ""}">${label}${id === "run" && busyTab ? ' <span class="spin"></span>' : ""}</button>`).join("");
+  renderSide((mcp ? MCP_TABS : LLM_TABS.filter(([id]) => state.status?.prompt || id === "prompt")).map(([id, label]) =>
+    `<button type="button" data-action="${mcp ? "mtab" : "tab"}" data-tab="${id}" class="${id === current ? "on" : ""}">${label}${id === "run" && busyTab ? ' <span class="spin"></span>' : ""}</button>`).join(""));
   renderMeta();
   const focused = document.activeElement;
   const focusId = focused && focused.id && $("#view").contains(focused) ? focused.id : null;
@@ -1031,6 +1504,10 @@ function render() {
     ? { servers: viewServers, run: viewMRun, reports: viewMReports, cases: viewMCases, env: viewEnv }
     : { run: viewRun, reports: viewReports, cases: viewCases, prompt: viewPrompt };
   $("#view").innerHTML = (views[current] || Object.values(views)[0])();
+  const dock = $("#dockPre");
+  if (dock && state.dockStick !== false) dock.scrollTop = dock.scrollHeight;
+  // Catégories partiellement cochées : état intermédiaire de la case.
+  document.querySelectorAll("#view input[data-partial]").forEach((i) => { i.indeterminate = true; });
 
   if (focusId) {
     const el = document.getElementById(focusId);
@@ -1075,8 +1552,67 @@ function modelPicker(opts) {
       <li><div class="group-h"><span>${esc(providerInfo(g.name)?.label || g.name)} ${tierChip(providerInfo(g.name)?.tier)}</span><span class="muted">${g.error ? `<span class="bad-t">${esc(g.error)}</span>` : tr("{n} modèle(s)", { n: g.models.length })}</span></div></li>
       ${g.models.map((m) => `<li><label><input type="checkbox" data-action="${opts.action}" data-name="${esc(m.key)}" ${opts.selected.has(m.key) ? "checked" : ""}>
         <span class="txt"><span class="strong mono">${esc(m.model)}</span>${m.details ? `<span class="msg">${esc(m.details)}</span>` : ""}</span>
-        ${m.loaded ? `<span class="chip ok">${tr("en mémoire")}</span>` : ""}</label></li>`).join("")}`).join("")}</ul>`
+        ${m.loaded ? `<span class="chip ok">${inMemory(m)}</span>` : ""}</label></li>`).join("")}`).join("")}</ul>`
       : `<p class="empty">${state.status?.ollama ? tr("Aucun modèle. Déclarer des fournisseurs et leurs modèles dans la config, ou {link}.", { link: `<button class="link" data-action="goModels">${tr("télécharger un modèle Ollama")}</button>` }) : tr("Aucun modèle. Déclarer des fournisseurs et leurs modèles dans la config.")}</p>`}`;
+}
+
+/** Statistiques d'un modèle sur toutes les campagnes (classement serveur), ou null. */
+const lbOf = (key) => (state.leaderboard || []).find((x) => x.model === key) || null;
+const isLocalKey = (key) => { const p = providerInfo(providerOf(key)); return p?.kind === "ollama" || /\/\/(localhost|127\.0\.0\.1)/.test(p?.baseUrl || ""); };
+
+/** Durée et coût estimés d'une campagne, d'après les latences et coûts médians des campagnes passées. */
+function estimateRun(models, nCases, runs, parallel) {
+  const calls = nCases * runs;
+  let local = 0, remote = 0, unknown = 0, cost = 0, costUnknown = false;
+  for (const k of models) {
+    const lb = lbOf(k);
+    if (lb?.medianLatencyMs == null) unknown++;
+    else if (isLocalKey(k)) local += lb.medianLatencyMs * calls;
+    else remote += lb.medianLatencyMs * calls;
+    if (tierOfKey(k) === "paid") { if (lb?.costPerCall == null) costUnknown = true; else cost += lb.costPerCall * calls; }
+  }
+  // Modèles locaux à la suite ; modèles distants en parallèle (en même temps que les locaux si parallélisme > 1).
+  const ms = parallel > 1 ? Math.max(local, remote / parallel) : local + remote;
+  return { ms, unknown, cost: costUnknown ? null : cost, paid: models.filter((k) => tierOfKey(k) === "paid").length };
+}
+const fmtDuration = (ms) => (ms < 60e3 ? `≈ ${Math.max(1, Math.round(ms / 1000))} s` : ms < 3600e3 ? `≈ ${Math.round(ms / 60e3)} min` : `≈ ${(ms / 3600e3).toFixed(1)} h`);
+
+function runModelCards() {
+  const tf = state.tierFilter;
+  const groups = state.avail.filter((g) => !tf || providerInfo(g.name)?.tier === tf);
+  if (!groups.length) return `<p class="empty">${state.status?.ollama ? tr("Aucun modèle. Déclarer des fournisseurs et leurs modèles dans la config, ou {link}.", { link: `<button class="link" data-action="goModels">${tr("télécharger un modèle Ollama")}</button>` }) : tr("Aucun modèle. Déclarer des fournisseurs et leurs modèles dans la config.")}</p>`;
+  return `<div class="mcards">${groups.map((g) => `
+    <div class="mgroup">${esc(providerInfo(g.name)?.label || g.name)} ${tierChip(providerInfo(g.name)?.tier)} ${g.error ? `<span class="bad-t" style="text-transform:none">${esc(g.error)}</span>` : ""}</div>
+    ${g.models.map((m) => {
+      const on = state.selModels.has(m.key);
+      const lb = lbOf(m.key);
+      const meta = [tierOfKey(m.key) === "paid" ? tr("payant") : tr("gratuit"), isLocalKey(m.key) ? tr("local") : tr("cloud"),
+        lb ? tr("{score} · {lat}", { score: fmt.pct(lb.passed, lb.total), lat: fmt.s(lb.medianLatencyMs) }) : tr("jamais testé")].join(" · ");
+      return `<label class="mcard ${on ? "on" : ""}"><input type="checkbox" data-action="toggleModel" data-name="${esc(m.key)}" ${on ? "checked" : ""}>
+        <span style="min-width:0"><span class="n" title="${esc(m.key)}">${esc(m.model)}</span><span class="m">${esc(meta)}${m.loaded ? ` · <span class="ok-t">${inMemory(m)}</span>` : ""}</span></span></label>`;
+    }).join("")}`).join("")}</div>`;
+}
+
+function runCaseGroups() {
+  const list = filteredCases();
+  if (!list.length) return `<p class="empty">${tr("Aucun cas ne correspond.")}</p>`;
+  const sel = new Set(state.selCases);
+  const cats = [...new Set(list.map((c) => c.category || ""))];
+  return cats.map((cat) => {
+    const cs = list.filter((c) => (c.category || "") === cat);
+    const n = cs.filter((c) => sel.has(c.id)).length;
+    const open = state.openCats.has(cat);
+    return `<div class="catrow">
+      <input type="checkbox" data-action="toggleCat" data-cat="${esc(cat)}" ${n === cs.length ? "checked" : ""} ${n && n < cs.length ? 'data-partial="1"' : ""} aria-label="${esc(tr("Catégorie {name}", { name: cat || tr("sans catégorie") }))}">
+      <span class="name">${esc(cat || tr("sans catégorie"))}</span>
+      <span class="ids" title="${esc(cs.map((c) => c.id).join(", "))}">${esc(cs.map((c) => c.id).join(", "))}</span>
+      <span class="cnt">${tr("{n}/{total} cas", { n, total: cs.length })}</span>
+      <button type="button" class="link small" data-action="openCat" data-cat="${esc(cat)}" aria-expanded="${open}">${open ? tr("masquer") : tr("détail")}</button>
+    </div>
+    ${open ? `<ul class="checklist catcases">${cs.map((c) => `
+      <li><label><input type="checkbox" data-action="toggleCase" data-id="${esc(c.id)}" ${sel.has(c.id) ? "checked" : ""}>
+        <span class="txt"><span class="strong mono">${esc(c.id)}</span><span class="msg">${esc(c.message)}</span></span></label></li>`).join("")}</ul>` : ""}`;
+  }).join("");
 }
 
 function viewRun() {
@@ -1084,49 +1620,68 @@ function viewRun() {
   const selM = [...state.selModels].filter((k) => keys.has(k));
   const selC = state.cases.filter((c) => state.selCases.includes(c.id));
   const calls = selM.length * selC.length * state.runs;
-  const list = filteredCases();
   const cats = [...new Set([...(state.status?.prompt?.categories || []), ...state.cases.map((c) => c.category).filter(Boolean)])];
-  const paid = selM.filter((k) => tierOfKey(k) === "paid").length;
+  const est = estimateRun(selM, selC.length, state.runs, state.parallel);
+  const a = state.active;
 
   return `
   ${state.active ? activePanel() : ""}
   ${!state.active && state.lastFinished ? `<div class="card card-h" style="margin:0"><span>${tr("Campagne terminée.")}</span><button class="b" data-action="openReport" data-id="${esc(state.lastFinished)}">${tr("Voir le rapport")}</button></div>` : ""}
-  <div class="grid2">
-    <section class="card">
-      <div class="card-h">
-        <h2>${tr("Modèles")} <span class="muted">${selM.length}/${keys.size}</span></h2>
-        <div class="btns"><button class="link" data-action="selModels" data-v="all">${tr("Tous")}</button><button class="link" data-action="selModels" data-v="none">${tr("Aucun")}</button><button class="link" data-action="refreshAvail">${tr("Actualiser")}</button></div>
-      </div>
-      ${modelPicker({ action: "toggleModel", selected: state.selModels })}
-    </section>
-    <section class="card">
-      <div class="card-h">
-        <h2>${tr("Cas de test")} <span class="muted">${selC.length}/${state.cases.length}</span></h2>
-        <div class="btns">
-          <button class="link" data-action="selCases" data-v="all">${tr("Tous")}</button>
-          <button class="link" data-action="selCases" data-v="none">${tr("Aucun")}</button>
-          <button class="link" data-action="selCases" data-v="invert">${tr("Inverser")}</button>
-          <button class="link" data-action="tab" data-tab="cases">${tr("Gérer")}</button>
+  <div class="pagehead"><div><h1>${tr("Nouvelle campagne")}</h1>
+    <p>${tr("Prompt système {version} envoyé directement aux modèles, réponses vérifiées cas par cas.", { version: state.status?.prompt?.version ? `<span class="mono">v${esc(state.status.prompt.version)}</span>` : "" })}</p></div></div>
+  <div class="runlay">
+    <div class="mainc">
+      <section class="card">
+        <div class="card-h">
+          <h2>${tr("1. Modèles")} <span class="muted" style="font-weight:400">· ${tr("{n} sélectionné(s)", { n: selM.length })}</span></h2>
+          <div class="btns">
+            <span class="seg">${[["", tr("Tous")], ["free", tr("Gratuits")], ["paid", tr("Payants")]].map(([v, l]) => `<button type="button" class="${state.tierFilter === v ? "on" : ""}" data-action="tierFilter" data-v="${v}">${l}</button>`).join("")}</span>
+            <button class="link" data-action="selModels" data-v="all">${tr("Tous")}</button><button class="link" data-action="selModels" data-v="none">${tr("Aucun")}</button><button class="link" data-action="refreshAvail">${tr("Actualiser")}</button>
+          </div>
         </div>
+        ${runModelCards()}
+      </section>
+
+      <section class="card">
+        <div class="card-h">
+          <h2>${tr("2. Cas de test")} <span class="muted" style="font-weight:400">· ${tr("{n} sur {total}", { n: selC.length, total: state.cases.length })}</span></h2>
+          <div class="btns">
+            <button class="link" data-action="selCases" data-v="all">${tr("Tout cocher")}</button>
+            <button class="link" data-action="selCases" data-v="none">${tr("Aucun")}</button>
+            <button class="link" data-action="selCases" data-v="invert">${tr("Inverser")}</button>
+            ${state.reports.length ? `<button class="link" data-action="selFailures">${tr("Seulement les échecs du dernier rapport")}</button>` : ""}
+            <button class="link" data-action="tab" data-tab="cases">${tr("Gérer")}</button>
+          </div>
+        </div>
+        <div class="row" style="margin-bottom:6px">
+          <input type="search" id="caseSearch" class="grow" placeholder="${tr("Filtrer (id, message…)")}" value="${esc(state.caseFilter.q)}" data-action="caseSearch">
+          <select id="caseCat" data-action="caseCat"><option value="">${tr("Toutes les catégories")}</option>${cats.map((c) => `<option ${state.caseFilter.category === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select>
+        </div>
+        ${runCaseGroups()}
+      </section>
+    </div>
+
+    <aside class="card">
+      <h2>${tr("3. Exécution")}</h2>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+        <label class="field">${tr("Répétitions par cas")}<input type="number" id="runsInput" data-action="runsInput" min="1" max="10" value="${state.runs}"></label>
+        <label class="field" title="${tr("Appels simultanés vers les modèles distants (cloud). Les modèles locaux (Ollama, localhost) restent toujours l'un après l'autre. 1 = tout à la suite.")}">${tr("Parallélisme")}<input type="number" id="parallelInput" data-action="parallelInput" min="1" max="16" value="${state.parallel}"></label>
       </div>
-      <div class="row" style="margin-bottom:10px">
-        <input type="search" id="caseSearch" class="grow" placeholder="${tr("Filtrer (id, message…)")}" value="${esc(state.caseFilter.q)}" data-action="caseSearch">
-        <select id="caseCat" data-action="caseCat"><option value="">${tr("Toutes les catégories")}</option>${cats.map((c) => `<option ${state.caseFilter.category === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select>
-      </div>
-      ${list.length ? `<ul class="checklist">${list.map((c) => `
-        <li><label><input type="checkbox" data-action="toggleCase" data-id="${esc(c.id)}" ${state.selCases.includes(c.id) ? "checked" : ""}>
-          <span class="txt"><span class="strong mono">${esc(c.id)}</span> ${catChip(c.category)}
-          <span class="msg">${esc(c.message)}</span></span></label></li>`).join("")}</ul>`
-        : `<p class="empty">${tr("Aucun cas ne correspond.")}</p>`}
-    </section>
-  </div>
-  <section class="card launch">
-    <label class="field grow">${tr("Nom du rapport (facultatif)")}<input type="text" id="runName" data-action="runName" value="${esc(state.runName)}" placeholder="${tr("ex. qwen vs llama, prompt v2.1")}"></label>
-    <label class="field">${tr("Répétitions par cas")}<input type="number" id="runsInput" data-action="runsInput" min="1" max="10" value="${state.runs}" style="width:90px"></label>
-    <label class="field" title="${tr("Appels simultanés vers les modèles distants (cloud). Les modèles locaux (Ollama, localhost) restent toujours l'un après l'autre. 1 = tout à la suite.")}">${tr("Parallélisme")}<input type="number" id="parallelInput" data-action="parallelInput" min="1" max="16" value="${state.parallel}" style="width:90px"></label>
-    <div class="muted small">${tr("{m} modèle(s) × {c} cas × {r} = {calls} appel(s)", { m: selM.length, c: selC.length, r: state.runs, calls: `<b>${calls}</b>` })}${state.parallel > 1 ? ` · ${tr("jusqu'à {n} en parallèle (modèles locaux à la suite)", { n: state.parallel })}` : ""}${paid ? ` · <span class="warn-t">${tr("{n} modèle(s) payant(s)", { n: paid })}</span>` : ""}</div>
-    <button class="b primary" data-action="launch" ${!calls || state.active ? "disabled" : ""}>${tr("Lancer la campagne")}</button>
-  </section>`;
+      <label class="field">${tr("Nom du rapport (facultatif)")}<input type="text" id="runName" data-action="runName" value="${esc(state.runName)}" placeholder="${tr("ex. qwen vs llama, prompt v2.1")}"></label>
+      <dl class="est">
+        <div><dt>${tr("Appels")}</dt><dd>${calls}</dd></div>
+        <div title="${est.unknown ? tr("{n} modèle(s) jamais testé(s) : non comptés", { n: est.unknown }) : tr("d'après les latences médianes des campagnes passées")}"><dt>${tr("Durée estimée")}</dt><dd>${calls && est.ms ? fmtDuration(est.ms) + (est.unknown ? "+" : "") : "–"}</dd></div>
+        <div><dt>${tr("Modèles payants")}</dt><dd>${est.paid}</dd></div>
+        <div title="${tr("d'après le coût moyen par appel des campagnes passées")}"><dt>${tr("Coût estimé")}</dt><dd>${!est.paid ? "0" : est.cost == null ? "?" : money(est.cost)}</dd></div>
+      </dl>
+      <p class="muted small" style="margin:0">${state.parallel > 1 ? tr("Les modèles locaux restent à la suite ; seuls les appels cloud partent en parallèle.") : tr("Tout s'exécute à la suite : les latences sont directement comparables.")}</p>
+      <button class="b primary big" data-action="launch" ${!calls || state.active ? "disabled" : ""}>${tr("Lancer la campagne")}</button>
+      ${a ? `<div style="border-top:1px solid var(--border);padding-top:12px;display:grid;gap:6px">
+        <div class="card-h" style="margin:0"><span class="strong small">${tr("Campagne en cours")}</span><span class="mono small muted">${a.done} / ${a.total}</span></div>
+        <div class="progress"><div style="width:${a.total ? (a.done / a.total) * 100 : 0}%"></div></div>
+        <span class="muted small">${tr("en cours : {name}", { name: esc(a.current || "") })}</span></div>` : ""}
+    </aside>
+  </div>`;
 }
 
 function activePanel() {
@@ -1173,18 +1728,182 @@ function viewReports() {
 
 function failingResults(r) { return r.results.filter((x) => x.status !== "pass"); }
 
+/** Tuiles d'indicateurs d'un rapport : meilleur score, meilleur gratuit, plus rapide, JSON, coût. */
+function kpiTiles(tiles) {
+  return `<div class="kpis">${tiles.filter(Boolean).map((t) => `<div class="kpi"><div class="l">${t.label}</div><div class="v">${t.value}</div><div class="s" title="${esc(t.sub || "")}">${esc(t.sub || "")}</div></div>`).join("")}</div>`;
+}
+const ratio = (n, t) => (t ? n / t : -1);
+const best = (list, score) => list.reduce((a, b) => (a == null || score(b) > score(a) ? b : a), null);
+
+function promptKpis(r) {
+  const rows = r.summary.filter((x) => x.total);
+  if (!rows.length) return "";
+  const top = best(rows, (x) => ratio(x.passed, x.total));
+  const free = best(rows.filter((x) => x.tier === "free"), (x) => ratio(x.passed, x.total));
+  const fast = best(rows.filter((x) => x.medianLatencyMs != null), (x) => -x.medianLatencyMs);
+  const total = rows.reduce((n, x) => n + x.total, 0), json = rows.reduce((n, x) => n + x.jsonOk, 0);
+  const cost = rows.some((x) => x.totalCost != null) ? rows.reduce((n, x) => n + (x.totalCost || 0), 0) : null;
+  return kpiTiles([
+    { label: tr("Meilleur score"), value: fmt.pct(top.passed, top.total), sub: top.model },
+    free && free !== top ? { label: tr("Meilleur gratuit"), value: fmt.pct(free.passed, free.total), sub: free.model } : null,
+    fast && { label: tr("Le plus rapide"), value: fmt.s(fast.medianLatencyMs), sub: tr("médiane · {model}", { model: fast.model }) },
+    { label: tr("JSON valide"), value: fmt.pct(json, total), sub: tr("{n} réponses", { n: total }) },
+    { label: tr("Coût de la campagne"), value: cost == null ? "–" : money(cost), sub: cost == null ? tr("aucun prix renseigné") : "" },
+  ]);
+}
+
+/** Barre de score : vert ≥ 90 %, bleu ≥ 75 %, orange en dessous. */
+function scoreBar(passed, total) {
+  const pct = total ? (passed / total) * 100 : 0;
+  const color = pct >= 90 ? "var(--ok)" : pct >= 75 ? "var(--accent)" : "var(--warn)";
+  return `<div class="sbar"><div class="track"><div style="width:${pct}%;background:${color}"></div></div><b>${fmt.pct(passed, total)}</b></div>`;
+}
+
+/**
+ * Carte réussi / échoué : une ligne par cas, une colonne par modèle ou serveur.
+ * cases = [{ id, text }] ; cols = [{ label, sub, results: (caseId) => [...] }].
+ */
+/** Tableau cas × colonnes. `status` (filtre) : seules les cases de ce statut s'affichent, les colonnes sans aucune case retenue sont masquées. */
+function heatmap(cases, cols, openAction, status = "") {
+  const pick = (rs) => (status ? rs.filter((x) => x.status === status) : rs);
+  if (status) cols = cols.filter((col) => cases.some((c) => pick(col.results(c.id)).length));
+  const cell = (all) => {
+    if (!all.length) return `<span class="none">–</span>`;
+    const rs = pick(all);
+    if (!rs.length) return `<span class="none" title="${tr("Masqué par le filtre de statut")}">·</span>`;
+    const st = new Set(rs.map((x) => x.status));
+    const cls = st.size === 1 ? [...st][0] : st.has("error") && !st.has("pass") ? "error" : "mix";
+    const last = rs[rs.length - 1];
+    const label = rs.map((x) => (x.status === "pass" ? tr("réussi") : x.status === "fail" ? tr("échoué") : tr("erreur"))).join(", ");
+    const why = rs.filter((x) => x.status !== "pass").map((x) => x.error || (x.failures || []).join(" ; ")).filter(Boolean)[0] || "";
+    return `<button type="button" class="${cls}" data-action="${openAction}" data-id="${esc(last.id)}" title="${esc(`${last.caseId} : ${label}${why ? ` — ${why}` : ""}`)}">
+      <span>${cls === "mix" ? "±" : RESULT_ICON[cls]}</span><span class="t">${fmt.s(last.latencyMs)}${all.length > 1 ? ` · ${(status ? rs : rs.filter((x) => x.status === "pass")).length}/${all.length}` : ""}</span></button>`;
+  };
+  return `
+    <div class="legend"><span><i style="background:var(--ok)"></i>${tr("réussi")}</span><span><i style="background:#b4530f"></i>${tr("échoué")}</span><span><i style="background:var(--text)"></i>${tr("erreur")}</span><span><i style="background:linear-gradient(135deg,var(--ok) 50%,#b4530f 50%)"></i>${tr("variable selon les runs")}</span></div>
+    <div class="table-wrap" style="margin-top:10px"><table class="heat-t">
+      <thead><tr><th>${tr("Cas")}</th>${cols.map((c) => `<th class="hcol" title="${esc(c.label)}"><span class="mono">${esc(c.label)}</span>${c.sub ? `<div class="muted" style="font-weight:400;text-transform:none;letter-spacing:0">${c.sub}</div>` : ""}</th>`).join("")}</tr></thead>
+      <tbody>${cases.map((c) => `<tr>
+        <td class="hcase"><span class="mono strong">${esc(c.id)}</span>${c.html ?? (c.text ? `<div class="muted small">${esc(c.text)}</div>` : "")}</td>
+        ${cols.map((col) => `<td class="hcell">${cell(col.results(c.id))}</td>`).join("")}
+      </tr>`).join("")}</tbody>
+    </table></div>`;
+}
+
+function promptRanking(r) {
+  const rows = [...r.summary].sort((a, b) => ratio(b.passed, b.total) - ratio(a.passed, a.total));
+  return `
+  <section class="card">
+    <div class="card-h"><h3>${tr("Classement")}</h3><span class="muted small">${tr("trié par score")}</span></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th style="width:40px">#</th><th>${tr("Modèle")}</th><th style="width:260px">${tr("Score")}</th><th class="num">${tr("JSON valide")}</th><th class="num">${tr("Latence méd.")}</th><th class="num">tok/s</th><th class="num">${tr("Coût / appel")}</th></tr></thead>
+      <tbody>${rows.map((x, i) => `<tr>
+        <td class="rank">${i + 1}</td>
+        <td class="mono" style="white-space:nowrap">${esc(x.model)} ${tierChip(x.tier)}${x.error ? `<div class="bad-t small">${esc(x.error)}</div>` : ""}</td>
+        <td>${scoreBar(x.passed, x.total)}<div class="muted small">${x.passed}/${x.total}</div></td>
+        <td class="num">${fmt.pct(x.jsonOk, x.total)}</td><td class="num">${fmt.s(x.medianLatencyMs)}</td><td class="num">${fmt.n(x.avgTokensPerSec)}</td><td class="num">${money(x.costPerCall)}</td>
+      </tr>`).join("")}</tbody>
+    </table></div>
+  </section>`;
+}
+
+function promptHeat(r) {
+  if (!r.results.length) return "";
+  const byScore = [...r.summary].sort((a, b) => ratio(b.passed, b.total) - ratio(a.passed, a.total));
+  const { cases, bar } = heatFilter(r, state.heatFilter, "heatCat", "heatStatus");
+  const comparable = (id) => new Set(r.results.filter((x) => x.caseId === id && x.raw != null).map((x) => x.model)).size >= 2;
+  return `
+  <section class="card">
+    <div class="card-h"><h3>${tr("Résultats par cas")} <span class="muted small">${cases.length}/${r.cases.length}</span></h3><span class="muted small">${tr("cliquer une case pour le détail")}</span></div>
+    ${bar}
+    ${cases.length
+      ? heatmap(cases.map((c) => ({ id: c.id, html: heatCaseHtml(c.category || c.intent, c.message,
+          comparable(c.id) && `<button class="link small" data-action="openDiff" data-case="${esc(c.id)}" title="${tr("Comparer les réponses des modèles sur ce cas : champs JSON qui diffèrent et diff ligne à ligne par rapport à un modèle de référence")}">⇄ ${tr("Comparer les réponses")}</button>`) })),
+        byScore.map((s) => ({ label: s.model, sub: `${tierChip(s.tier)} ${fmt.pct(s.passed, s.total)}`, results: (id) => r.results.filter((x) => x.caseId === id && x.model === s.model) })), "openResult", state.heatFilter.status)
+      : `<p class="empty">${tr("Aucun cas ne correspond aux filtres.")}</p>`}
+  </section>`;
+}
+
+function serverRanking(r) {
+  const rows = [...r.summary].sort((a, b) => ratio(b.passed, b.total) - ratio(a.passed, a.total));
+  return `
+  <section class="card">
+    <div class="card-h"><h3>${tr("Classement")}</h3><span class="muted small">${tr("trié par score")}</span></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th style="width:40px">#</th><th>${tr("Serveur")}</th><th style="width:260px">${tr("Score")}</th><th class="num">${tr("Vérifs OK")}</th><th class="num">${tr("Latence méd.")}</th><th class="num">${tr("Appels LLM")}</th><th class="num">${tr("Coût / cas")}</th></tr></thead>
+      <tbody>${rows.map((x, i) => `<tr>
+        <td class="rank">${i + 1}</td>
+        <td><span class="strong">${esc(x.name)}</span><div class="mono small">${esc(x.model)} ${providerChip(x.provider)}</div></td>
+        <td>${scoreBar(x.passed, x.total)}<div class="muted small">${tr("{n}/{total} cas", { n: x.passed, total: x.total })}</div></td>
+        <td class="num">${fmt.pct(x.checksOk, x.checksTotal)}</td><td class="num">${fmt.s(x.medianStepMs)}</td>
+        <td class="num">${fmt.n(x.llmCalls)}${x.llmErrors ? `<div class="bad-t small">${tr("{n} en erreur", { n: x.llmErrors })}</div>` : ""}</td><td class="num">${money(x.costPerCase)}</td>
+      </tr>`).join("")}</tbody>
+    </table></div>
+  </section>`;
+}
+
+/** Filtres catégorie / statut de « Résultats par cas » : cas retenus et barre de filtres. Statut : au moins un résultat dans ce statut. */
+function heatFilter(r, f, catAction, statusAction) {
+  const cats = [...new Set(r.cases.map((c) => c.category || ""))].sort();
+  const cases = r.cases.filter((c) => (f.cat === null || (c.category || "") === f.cat)
+    && (!f.status || r.results.some((x) => x.caseId === c.id && x.status === f.status)));
+  const counts = Object.fromEntries(["pass", "fail", "error"].map((st) => [st, new Set(r.results.filter((x) => x.status === st).map((x) => x.caseId)).size]));
+  const bar = `<div class="row" style="margin-bottom:12px">
+      ${cats.length > 1 || cats[0] ? `<label class="field">${tr("Catégorie")}
+        <select data-action="${catAction}"><option value="*">${tr("Toutes les catégories")}</option>${cats.map((c) => `<option value="${esc(c)}" ${f.cat === c ? "selected" : ""}>${esc(c || tr("sans catégorie"))}</option>`).join("")}</select></label>` : ""}
+      <label class="field">${tr("Statut")}
+        <span class="seg">${[["", tr("Tous")], ["pass", `${RESULT_ICON.pass} ${tr("réussi")}`], ["fail", `${RESULT_ICON.fail} ${tr("échoué")}`], ["error", `${RESULT_ICON.error} ${tr("erreur")}`]].map(([v, l]) =>
+          `<button type="button" class="${f.status === v ? "on" : ""}" data-action="${statusAction}" data-v="${v}" ${v && !counts[v] ? "disabled" : ""} title="${v ? esc(tr("Afficher uniquement les résultats « {label} » ({n} cas)", { label: l, n: counts[v] })) : ""}">${l}</button>`).join("")}</span></label>
+    </div>`;
+  return { cases, bar };
+}
+
+/** Cellule « Cas » : catégorie, message(s), lien Comparer. */
+const heatCaseHtml = (category, text, compare) => `${category ? ` <span class="chip">${esc(category)}</span>` : ""}
+  ${text ? `<div class="muted small" title="${esc(text)}">${esc(text)}</div>` : ""}${compare ? `<div>${compare}</div>` : ""}`;
+
+function serverHeat(r) {
+  if (!r.results.length) return "";
+  const byScore = [...r.summary].sort((a, b) => ratio(b.passed, b.total) - ratio(a.passed, a.total));
+  const { cases, bar } = heatFilter(r, state.mHeatFilter, "mHeatCat", "mHeatStatus");
+  return `
+  <section class="card">
+    <div class="card-h"><h3>${tr("Résultats par cas")} <span class="muted small">${cases.length}/${r.cases.length}</span></h3><span class="muted small">${tr("cliquer une case pour le détail des étapes")}</span></div>
+    ${bar}
+    ${cases.length
+      ? heatmap(cases.map((c) => ({ id: c.id, html: heatCaseHtml(c.category, c.steps.map((st) => st.message).join(" → "),
+          serverRunsFor(r, c.id).length >= 2 && `<button class="link small" data-action="openMDiff" data-case="${esc(c.id)}" title="${tr("Comparer les réponses des serveurs sur ce cas, étape par étape : champs JSON qui diffèrent et diff du message par rapport à un serveur de référence")}">⇄ ${tr("Comparer les réponses")}</button>`) })),
+        byScore.map((s) => ({ label: s.name, sub: `${esc(s.model)} · ${fmt.pct(s.passed, s.total)}`, results: (id) => r.results.filter((x) => x.caseId === id && x.serverId === s.serverId) })), "openMResult", state.mHeatFilter.status)
+      : `<p class="empty">${tr("Aucun cas ne correspond aux filtres.")}</p>`}
+  </section>`;
+}
+
+function serverKpis(r) {
+  const rows = r.summary.filter((x) => x.total);
+  if (!rows.length) return "";
+  const top = best(rows, (x) => ratio(x.passed, x.total));
+  const fast = best(rows.filter((x) => x.medianStepMs != null), (x) => -x.medianStepMs);
+  const calls = rows.reduce((n, x) => n + (x.llmCalls || 0), 0), llmErr = rows.reduce((n, x) => n + (x.llmErrors || 0), 0);
+  const cost = rows.some((x) => x.totalCost != null) ? rows.reduce((n, x) => n + (x.totalCost || 0), 0) : null;
+  return kpiTiles([
+    { label: tr("Meilleur score"), value: fmt.pct(top.passed, top.total), sub: `${top.name} · ${top.model}` },
+    fast && { label: tr("Réponse la plus rapide"), value: fmt.s(fast.medianStepMs), sub: tr("médiane par requête · {name}", { name: fast.name }) },
+    { label: tr("Appels LLM"), value: fmt.n(calls), sub: llmErr ? tr("{n} en erreur", { n: llmErr }) : tr("aucune erreur") },
+    { label: tr("Coût de la campagne"), value: cost == null ? "–" : money(cost), sub: cost == null ? tr("aucun prix renseigné") : "" },
+  ]);
+}
+
 function viewReport() {
   const r = state.report;
   const failing = failingResults(r);
   const running = r.status === "running";
   const replayingAll = state.replaying.size > 0;
-  const cases = state.onlyFailures ? r.cases.filter((c) => r.results.some((x) => x.caseId === c.id && x.status !== "pass")) : r.cases;
 
   return `
   <section class="card">
     <div class="card-h">
       <div>
-        <button class="link" data-action="closeReport">← ${tr("Tous les rapports")}</button>
+        <button class="back" data-action="closeReport" title="${tr("Raccourci : Échap")}"><span class="arrow">←</span>${tr("Retour à la liste des rapports")}</button>
         <h2 style="margin-top:6px">${esc(r.name || tr("Rapport du {date}", { date: fmt.date(r.date) }))} ${statusChip(r.status)}</h2>
         <div class="muted small">${fmt.date(r.date)} · ${r.promptVersion ? `prompt v${esc(r.promptVersion)} · ` : ""}${tr("{c} cas × {r} run(s)", { c: r.cases.length, r: r.runs })}</div>
       </div>
@@ -1197,8 +1916,12 @@ function viewReport() {
     </div>
   </section>
 
+  ${promptKpis(r)}
+  ${promptRanking(r)}
+  ${promptHeat(r)}
+
   <section class="card">
-    <div class="card-h"><h3>${tr("Synthèse par modèle")}</h3></div>
+    <details><summary>${tr("Détails techniques par modèle (tokens, coût, mémoire, contexte)")}</summary>
     <div class="table-wrap"><table>
       <thead><tr><th>${tr("Modèle")}</th><th>${tr("Score")}</th><th class="num">${tr("JSON valide")}</th><th class="num">${tr("Erreurs")}</th>
         <th class="num">${tr("Latence moy.")}</th><th class="num">${tr("Médiane")}</th><th class="num">${tr("Tokens entrée")}</th><th class="num">${tr("Tokens sortie")}</th><th class="num">tok/s</th>
@@ -1222,27 +1945,7 @@ function viewReport() {
           <td class="num">${s.runtime?.contextLength ? s.runtime.contextLength.toLocaleString(LOCALE) : "–"}</td>
         </tr>`).join("")}</tbody>
     </table></div>
-  </section>
-
-  <section class="card">
-    <div class="card-h">
-      <h3>${tr("Résultats par cas")} <span class="muted small">${tr("cliquer un résultat pour le détail")}</span></h3>
-      <label class="small"><input type="checkbox" data-action="onlyFailures" ${state.onlyFailures ? "checked" : ""}> ${tr("Échecs seulement")}</label>
-    </div>
-    ${cases.length ? `<div class="table-wrap"><table>
-      <thead><tr><th>${tr("Cas")}</th>${r.models.map((m) => `<th class="mono">${esc(m.name)}</th>`).join("")}</tr></thead>
-      <tbody>${cases.map((c) => `
-        <tr>
-          <td style="min-width:220px"><span class="mono strong">${esc(c.id)}</span> ${catChip(c.category || c.intent)}<div class="muted small">${esc(c.message)}</div>
-            ${new Set(r.results.filter((x) => x.caseId === c.id && x.raw != null).map((x) => x.model)).size >= 2 ? `<button class="link small" data-action="openDiff" data-case="${esc(c.id)}" title="${tr("Comparer les réponses des modèles sur ce cas : champs JSON qui diffèrent et diff ligne à ligne par rapport à un modèle de référence")}">⇄ ${tr("Comparer les réponses")}</button>` : ""}</td>
-          ${r.models.map((m) => {
-            const rs = r.results.filter((x) => x.caseId === c.id && x.model === m.name);
-            if (!rs.length) return `<td class="muted">${running ? "…" : "–"}</td>`;
-            return `<td>${rs.map((x) => `<button class="pill ${x.status} ${state.replaying.has(x.id) ? "busy" : ""} ${state.resultId === x.id ? "sel" : ""}" data-action="openResult" data-id="${esc(x.id)}" title="${esc((x.status === "pass" ? tr("réussi") : x.error || x.failures.join(" ; ")) + (x.contextTruncated ? " — ⚠ " + tr("contexte probablement tronqué") : ""))}">${state.replaying.has(x.id) ? '<span class="spin"></span>' : RESULT_ICON[x.status]} ${fmt.s(x.latencyMs)}${x.previous?.length ? " ↻" : ""}${x.contextTruncated ? " ⚠" : ""}</button>`).join("")}
-              ${rs.filter((x) => x.status !== "pass").map((x) => `<div class="small bad-t">${esc(x.error ? tr("erreur d'appel") : x.failures.join(" ; "))}</div>`).slice(0, 1).join("")}</td>`;
-          }).join("")}
-        </tr>`).join("")}</tbody>
-    </table></div>` : `<p class="empty">${state.onlyFailures ? tr("Aucun échec 🎉") : tr("Aucun résultat.")}</p>`}
+    </details>
   </section>`;
 }
 
@@ -1291,54 +1994,97 @@ function renderDiff(d) {
   return `<div class="diff">${html}</div>`;
 }
 
+/**
+ * Comparaison de réponses : items = [{ key, label, status, latencyMs, parsed, text, note }].
+ * Champs JSON qui diffèrent (clés triées) puis diff ligne à ligne de chaque réponse avec la référence.
+ */
+function diffBody(items, refKey) {
+  const ref = items.find((x) => x.key === refKey) || items[0];
+  const json = items.filter((x) => x.parsed !== undefined);
+  const leafs = json.map((x) => leaves(x.parsed));
+  const paths = [...new Set(leafs.flatMap((l) => Object.keys(l)))].sort();
+  const differing = paths.filter((p) => new Set(leafs.map((l) => l[p] ?? "∅")).size > 1);
+  const refLeaves = ref.parsed !== undefined ? leaves(ref.parsed) : {};
+  const head = (x) => `<span class="pill ${x.status}">${RESULT_ICON[x.status] || "·"}</span> <span class="mono strong">${esc(x.label)}</span> <span class="muted small">${fmt.s(x.latencyMs)}${x.note ? " · " + esc(x.note) : ""}</span>`;
+  return `
+    <div class="row" style="align-items:center">
+      <label class="field">${tr("Référence")}
+        <select data-action="diffRef">${items.map((x) => `<option value="${esc(x.key)}" ${x === ref ? "selected" : ""}>${esc(x.label)}</option>`).join("")}</select></label>
+      <span class="muted small" style="align-self:center">${tr("Dernière réponse de chacun. JSON réindenté, clés triées : seules les vraies différences ressortent.")}</span>
+    </div>
+
+    ${json.length >= 2 ? `<div class="section"><h3>${tr("Champs qui diffèrent")} <span class="muted">${differing.length}/${paths.length}</span></h3>
+      ${differing.length ? `<div class="table-wrap"><table class="fields small">
+        <thead><tr><th>${tr("Champ")}</th>${json.map((x) => `<th class="mono">${esc(x.label)}${x === ref ? ` <span class="chip accent">${tr("réf.")}</span>` : ""}</th>`).join("")}</tr></thead>
+        <tbody>${differing.map((p) => `<tr><td class="mono">${esc(p)}</td>${json.map((x, k) => {
+          const v = leafs[k][p];
+          return `<td class="mono ${x !== ref && v !== refLeaves[p] ? "differs" : ""}">${v === undefined ? `<span class="muted">${tr("absent")}</span>` : esc(v)}</td>`;
+        }).join("")}</tr>`).join("")}</tbody></table></div>` : `<p class="ok-t small" style="margin:0">${tr("Mêmes valeurs partout.")}</p>`}
+      ${json.length < items.length ? `<p class="muted small" style="margin:0">${tr("Sans JSON (non comparés champ par champ) : {list}.", { list: items.filter((x) => x.parsed === undefined).map((x) => `<span class="mono">${esc(x.label)}</span>`).join(", ") })}</p>` : ""}
+    </div>` : ""}
+
+    <div class="section"><h3>${tr("Référence")}</h3><div>${head(ref)}</div><pre>${esc(ref.text)}</pre></div>
+
+    ${items.filter((x) => x !== ref).map((x) => {
+      const d = lineDiff(ref.text, x.text);
+      const added = d.filter((y) => y.t === "+").length, removed = d.filter((y) => y.t === "-").length;
+      return `<div class="section"><h3>${tr("Différences avec la référence")}</h3>
+        <div>${head(x)} ${added || removed ? `<span class="small"><span class="ok-t">+${added}</span> <span class="bad-t">−${removed}</span> ${tr("lignes")}</span>` : `<span class="chip ok">${tr("identique")}</span>`}</div>
+        ${added || removed ? renderDiff(d) : ""}</div>`;
+    }).join("")}`;
+}
+
 function modalDiff() {
   const r = state.report;
   const c = r.cases.find((y) => y.id === state.diffCase);
   // Dernière réponse de chaque modèle sur ce cas.
   const byModel = r.models.map((m) => r.results.filter((x) => x.caseId === state.diffCase && x.model === m.name && x.raw != null).sort((a, b) => a.at.localeCompare(b.at)).at(-1)).filter(Boolean);
   if (byModel.length < 2) return "";
-  const ref = byModel.find((x) => x.model === state.diffRef) || byModel[0];
-  const refText = answerText(ref);
-
-  // Champs JSON qui diffèrent entre au moins deux modèles.
-  const json = byModel.filter((x) => x.parsed !== undefined);
-  const leafs = json.map((x) => leaves(x.parsed));
-  const paths = [...new Set(leafs.flatMap((l) => Object.keys(l)))].sort();
-  const differing = paths.filter((p) => new Set(leafs.map((l) => l[p] ?? "∅")).size > 1);
-
-  const head = (x) => `<span class="pill ${x.status}">${RESULT_ICON[x.status]}</span> <span class="mono strong">${esc(x.model)}</span> <span class="muted small">${fmt.s(x.latencyMs)}</span>`;
+  const items = byModel.map((x) => ({ key: x.model, label: x.model, status: x.status, latencyMs: x.latencyMs, parsed: x.parsed, text: answerText(x) }));
   return `<div class="overlay center" data-action="closeModal"><div class="panel" data-stop style="width:min(1200px,100%)">
     <div class="panel-h"><div><h2>${tr("Comparer les réponses")} · <span class="mono">${esc(state.diffCase)}</span></h2>${c ? `<div class="muted small">${esc(c.message)}</div>` : ""}</div><button class="icon" data-action="closeModal">✕</button></div>
+    ${diffBody(items, state.diffRef)}
+  </div></div>`;
+}
 
-    <div class="row" style="align-items:center">
-      <label class="field">${tr("Référence")}
-        <select data-action="diffRef">${byModel.map((x) => `<option value="${esc(x.model)}" ${x === ref ? "selected" : ""}>${esc(x.model)}</option>`).join("")}</select></label>
-      <span class="muted small" style="align-self:center">${tr("Dernière réponse de chaque modèle. JSON réindenté, clés triées : seules les vraies différences ressortent.")}</span>
-    </div>
+// ---- Comparaison des réponses entre serveurs (bench serveur) ----
+/** Texte comparable d'une étape : message rédigé, une phrase par ligne ; sinon la réponse JSON. */
+function stepText(st) {
+  if (st.reply) return String(st.reply).replace(/([.!?…])\s+/g, "$1\n").trim();
+  if (st.response !== undefined && st.response !== null) return typeof st.response === "string" ? prettyJson(st.response) : JSON.stringify(sortKeys(st.response), null, 2);
+  return st.error || "";
+}
 
-    ${json.length >= 2 ? `<div class="section"><h3>${tr("Champs qui diffèrent")} <span class="muted">${differing.length}/${paths.length}</span></h3>
-      ${differing.length ? `<div class="table-wrap"><table class="fields small">
-        <thead><tr><th>${tr("Champ")}</th>${json.map((x) => `<th class="mono">${esc(x.model)}${x === ref ? ` <span class="chip accent">${tr("réf.")}</span>` : ""}</th>`).join("")}</tr></thead>
-        <tbody>${differing.map((p) => {
-          const refVal = leaves(ref.parsed ?? {})[p];
-          return `<tr><td class="mono">${esc(p)}</td>${json.map((x, k) => {
-            const v = leafs[k][p];
-            return `<td class="mono ${x !== ref && v !== refVal ? "differs" : ""}">${v === undefined ? `<span class="muted">${tr("absent")}</span>` : esc(v)}</td>`;
-          }).join("")}</tr>`;
-        }).join("")}</tbody></table></div>` : `<p class="ok-t small" style="margin:0">${tr("Mêmes valeurs dans tous les modèles.")}</p>`}
-      ${json.length < byModel.length ? `<p class="muted small" style="margin:0">${tr("Sans JSON valide (non comparés champ par champ) : {list}.", { list: byModel.filter((x) => x.parsed === undefined).map((x) => `<span class="mono">${esc(x.model)}</span>`).join(", ") })}</p>` : ""}
-    </div>` : ""}
+/** Serveurs ayant joué ce cas : dernière exécution de chacun. */
+function serverRunsFor(r, caseId) {
+  return r.servers.map((s) => {
+    const res = r.results.filter((x) => x.caseId === caseId && x.serverId === s.id).sort((a, b) => a.at.localeCompare(b.at)).at(-1);
+    return res ? { server: s, res } : null;
+  }).filter(Boolean);
+}
 
-    <div class="section"><h3>${tr("Référence")}</h3><div>${head(ref)}</div><pre>${esc(refText)}</pre></div>
-
-    ${byModel.filter((x) => x !== ref).map((x) => {
-      const text = answerText(x);
-      const d = lineDiff(refText, text);
-      const added = d.filter((y) => y.t === "+").length, removed = d.filter((y) => y.t === "-").length;
-      return `<div class="section"><h3>${tr("Différences avec la référence")}</h3>
-        <div>${head(x)} ${added || removed ? `<span class="small"><span class="ok-t">+${added}</span> <span class="bad-t">−${removed}</span> ${tr("lignes")}</span>` : `<span class="chip ok">${tr("identique")}</span>`}</div>
-        ${added || removed ? renderDiff(d) : ""}</div>`;
-    }).join("")}
+function modalMDiff() {
+  const r = state.mReport;
+  const c = r.cases.find((y) => y.id === state.mDiffCase);
+  const runs = serverRunsFor(r, state.mDiffCase);
+  if (runs.length < 2 || !c) return "";
+  const nSteps = Math.max(...runs.map((x) => x.res.steps.length));
+  const i = Math.min(state.mDiffStep || 0, nSteps - 1);
+  const items = runs.filter((x) => x.res.steps[i]).map(({ server, res }) => {
+    const st = res.steps[i];
+    return {
+      key: server.id, label: server.name, status: st.status, latencyMs: st.latencyMs,
+      parsed: st.response && typeof st.response === "object" ? st.response : undefined,
+      text: stepText(st),
+      note: [server.model, st.kind, tr("{n} appel(s) LLM", { n: (st.llmCalls || []).length })].filter(Boolean).join(" · "),
+    };
+  });
+  const message = c.steps[i]?.message ?? runs.find((x) => x.res.steps[i])?.res.steps[i].message;
+  return `<div class="overlay center" data-action="closeModal"><div class="panel" data-stop style="width:min(1200px,100%)">
+    <div class="panel-h"><div><h2>${tr("Comparer les réponses des serveurs")} · <span class="mono">${esc(c.id)}</span></h2>
+      <div class="muted small">${tr("Étape {n}", { n: i + 1 })} : ${esc(message || "")}</div></div><button class="icon" data-action="closeModal">✕</button></div>
+    ${nSteps > 1 ? `<div class="seg" style="justify-self:start" role="group" aria-label="${tr("Étape")}">${Array.from({ length: nSteps }, (_, k) => `<button type="button" class="${k === i ? "on" : ""}" data-action="mDiffStep" data-i="${k}">${tr("Étape {n}", { n: k + 1 })}</button>`).join("")}</div>` : ""}
+    ${items.length >= 2 ? diffBody(items, state.diffRef) : `<p class="empty">${tr("Moins de deux serveurs ont joué cette étape.")}</p>`}
   </div></div>`;
 }
 
@@ -1354,8 +2100,8 @@ function drawerResult() {
   const label = { pass: tr("Réussi"), fail: tr("Échec"), error: tr("Erreur d'appel") }[x.status];
 
   return `
-  <div class="overlay" data-action="closeLayer">
-    <aside class="panel" data-stop>
+  <div class="overlay center" data-action="closeLayer">
+    <aside class="panel wide" data-stop>
       <div class="panel-h">
         <div><div class="muted small mono">${esc(x.model)} · run ${x.run}</div><h2 class="mono">${esc(x.caseId)}</h2>${c?.description ? `<div class="muted small">${esc(c.description)}</div>` : ""}</div>
         <button class="icon" data-action="closeLayer" title="${tr("Fermer")}">✕</button>
@@ -1447,7 +2193,7 @@ const textToTuples = (t, keys) => String(t).split(",").map((s) => s.trim()).filt
 function fieldInput(f, v, path) {
   if (f.kind === "select") {
     const opts = f.options.includes(v) || v == null || v === "" ? f.options : [v, ...f.options];
-    return `<select data-path="${path}">${opts.map((o) => `<option ${o === v ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`;
+    return `<select data-path="${path}">${opts.map((o) => `<option value="${esc(o)}" ${o === v ? "selected" : ""}>${esc(f.optionLabels?.[o] ?? o)}</option>`).join("")}</select>`;
   }
   if (f.kind === "tuples") return `<input type="text" data-path="${path}" data-kind="tuples" data-keys="${esc((f.keys || ["a", "b"]).join(","))}" value="${esc(tuplesToText(v, f.keys || ["a", "b"]))}" placeholder="${esc(f.placeholder || "")}">`;
   if (f.kind === "number") return `<input type="number" data-path="${path}" data-kind="number" value="${esc(v ?? "")}" placeholder="${esc(f.placeholder || "")}" style="width:110px">`;
@@ -1535,6 +2281,88 @@ function providerRows(tier) {
 const hostOf = (url) => String(url || "").replace(/^(https?:\/\/[^/]+).*$/, "$1");
 const statusCell = (error) => (error ? `<span class="chip bad" title="${esc(error)}">${esc(error)}</span>` : `<span class="chip ok">${tr("prêt")}</span>`);
 const fromConfigNote = () => `<span class="muted small" title="${tr("Déclaré dans {file}", { file: esc(state.status?.configFile || "bench.config.ts") })}">${tr("config")}</span>`;
+
+/** Sous-page « Statistiques » du menu Modèles : classement sur vos cas et mémoire Ollama. */
+function modelsOverview() {
+  const all = availFlat();
+  const counts = { "": all.length, free: all.filter((m) => m.tier === "free").length, paid: all.filter((m) => m.tier === "paid").length };
+  const q = state.lbQuery.trim().toLowerCase();
+  const rows = all.filter((m) => (!state.tierFilter || m.tier === state.tierFilter) && (!q || m.key.toLowerCase().includes(q)))
+    .map((m) => ({ m, lb: lbOf(m.key) }))
+    .sort((a, b) => (b.lb ? ratio(b.lb.passed, b.lb.total) : -2) - (a.lb ? ratio(a.lb.passed, a.lb.total) : -2));
+  const stateOf = (m) => {
+    if (isLocalKey(m.key)) return m.loaded ? `<span class="ok-t">${inMemory(m)}</span>` : tr("installé");
+    const p = providerInfo(providerOf(m.key));
+    return p?.unavailable ? `<span class="bad-t">${esc(p.unavailable)}</span>` : `<span class="ok-t">${tr("clé OK")}</span>`;
+  };
+  const installed = state.models || [];
+  const totalSize = installed.reduce((n, m) => n + (m.size || 0), 0);
+  const shades = ["var(--accent)", "color-mix(in srgb, var(--accent) 70%, var(--surface))", "color-mix(in srgb, var(--accent) 45%, var(--surface))", "color-mix(in srgb, var(--accent) 25%, var(--surface))"];
+  const ctx = installed.find((m) => m.loaded?.contextLength)?.loaded.contextLength;
+  return `
+  ${modelsHead(tr("Statistiques"))}
+  <div class="pills" role="group" aria-label="${tr("Offre")}">
+    ${[["", tr("Tous")], ["free", tr("Gratuits")], ["paid", tr("Payants")]].map(([v, l]) => `<button type="button" class="${state.tierFilter === v ? "on" : ""}" data-action="tierFilter" data-v="${v}" aria-pressed="${state.tierFilter === v}">${l} · ${counts[v]}</button>`).join("")}
+    <input type="search" id="lbSearch" data-action="lbSearch" placeholder="${tr("Rechercher un modèle…")}" value="${esc(state.lbQuery)}" aria-label="${tr("Rechercher un modèle")}">
+  </div>
+  <section class="card" style="padding:0;overflow:hidden">
+    <div class="card-h" style="padding:16px 20px;margin:0;border-bottom:1px solid var(--border)"><h2>${tr("Classement sur vos cas")} <span class="muted" style="font-weight:400">${tr("(toutes les campagnes du bench prompt)")}</span></h2>
+      <span class="muted small">${tr("score = cas réussis · latence médiane · débit en sortie")}</span></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th style="padding-left:20px">${tr("Modèle")}</th><th>${tr("Offre")}</th><th style="width:240px">${tr("Score")}</th><th class="num">${tr("Latence")}</th><th class="num">tok/s</th><th class="num">${tr("Réponses")}</th><th>${tr("État")}</th><th></th></tr></thead>
+      <tbody>${rows.length ? rows.map(({ m, lb }) => `<tr>
+        <td style="padding-left:20px"><span class="mono strong">${esc(m.model)}</span><div class="muted small">${esc(providerInfo(providerOf(m.key))?.label || providerOf(m.key))}</div></td>
+        <td>${tierChip(m.tier)}</td>
+        <td>${lb ? scoreBar(lb.passed, lb.total) : `<span class="muted small">${tr("jamais testé")}</span>`}</td>
+        <td class="num">${fmt.s(lb?.medianLatencyMs)}</td><td class="num">${fmt.n(lb?.medianTokensPerSec)}</td><td class="num">${lb ? lb.total : "–"}</td>
+        <td class="small">${stateOf(m)}</td>
+        <td class="num"><button class="b small" data-action="testModel" data-name="${esc(m.key)}" title="${tr("Préparer une campagne du bench prompt avec ce modèle")}">${tr("Tester")}</button></td>
+      </tr>`).join("") : `<tr><td colspan="8" class="empty">${tr("Aucun modèle ne correspond.")}</td></tr>`}</tbody>
+    </table></div>
+  </section>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px">
+    ${state.status?.ollama ? `<section class="card" style="display:grid;gap:10px">
+      <h2>${tr("Ollama · mémoire")}</h2>
+      <div class="card-h" style="margin:0"><span class="muted small">${tr("{n} modèle(s) installé(s)", { n: installed.length })}</span><span class="mono">${fmt.gb(totalSize)}</span></div>
+      <div class="membar" role="img" aria-label="${tr("Répartition de l'espace disque des modèles")}">${installed.map((m, i) => `<div title="${esc(m.name)} · ${fmt.gb(m.size)}" style="width:${totalSize ? (m.size / totalSize) * 100 : 0}%;background:${shades[i % shades.length]}"></div>`).join("")}</div>
+      <p class="muted small" style="margin:0">${ctx ? tr("Contexte du modèle chargé : {n} tokens", { n: `<span class="mono">${ctx.toLocaleString(LOCALE)}</span>` }) : tr("Aucun modèle chargé en mémoire pour l'instant.")}</p>
+    </section>` : ""}
+  </div>`;
+}
+
+/** En-tête commun aux sous-pages du menu Modèles. */
+function modelsHead(title) {
+  const all = availFlat();
+  const local = all.filter((m) => isLocalKey(m.key)).length;
+  return `
+  <div class="pagehead">
+    <div><h1>${tr("Modèles")} <span class="muted" style="font-weight:400">· ${title}</span></h1><p>${tr("{n} modèle(s) utilisable(s) · {l} local(aux), {c} cloud", { n: all.length, l: local, c: all.length - local })}</p></div>
+    <div class="btns">
+      <button class="b" data-action="goPull">${tr("Télécharger un modèle local")}</button>
+      <button class="b primary" data-action="addProvider">+ ${tr("Ajouter un modèle payant")}</button>
+    </div>
+  </div>`;
+}
+
+/** Sous-page « Liste des modèles » : offre gratuite / payante et clés des fournisseurs cloud. */
+function modelsList() {
+  const all = availFlat();
+  const cloud = (state.status?.providers || []).filter((p) => p.kind !== "ollama");
+  return `
+  ${modelsHead(tr("Liste des modèles"))}
+  <div class="pills" role="group" aria-label="${tr("Offre")}">
+    ${[["free", tr("Gratuits")], ["paid", tr("Payants")]].map(([v, l]) => `<button type="button" class="${state.modtab === v ? "on" : ""}" data-action="modtab" data-tab="${v}" aria-pressed="${state.modtab === v}">${l} · ${all.filter((m) => m.tier === v).length}</button>`).join("")}
+  </div>
+  ${state.modtab === "paid" ? viewPaidModels() : viewFreeModels()}
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px">
+    <section class="card" style="display:grid;gap:4px">
+      <h2 style="margin-bottom:6px">${tr("Clés des fournisseurs cloud")}</h2>
+      ${cloud.length ? cloud.map((p) => `<div class="kv-row"><span class="mono">${esc(p.name)}</span>${p.unavailable
+        ? `<button class="link small" data-action="${p.fromUi ? "editProvider" : "editKey"}" data-name="${esc(p.name)}" data-model="${esc(p.models?.[0] || "")}">${tr("Renseigner la clé")}</button>`
+        : `<span class="ok-t small strong">${p.fromUi ? tr("clé interface · OK") : p.keyFromUi ? tr("clé interface · OK") : tr("clé config · OK")}</span>`}</div>`).join("") : `<p class="muted small" style="margin:0">${tr("Aucun fournisseur cloud.")}</p>`}
+    </section>
+  </div>`;
+}
 
 function viewFreeModels() {
   const cloud = providerRows("free");
@@ -1645,54 +2473,112 @@ function viewOllamaModels() {
 // =============================================================================================
 // Passerelle
 // =============================================================================================
+/** Routage de la passerelle : votre application → passerelle → fournisseur réel (hôte et port). */
+function gatewayRoute(g) {
+  const envNames = state.status?.server?.env;
+  const p = g.target ? providerInfo(providerOf(g.target)) : null;
+  let host = "", port = "";
+  try {
+    const u = new URL(p?.baseUrl || "");
+    host = u.hostname;
+    port = u.port || (u.protocol === "https:" ? "443" : "80");
+  } catch { /* fournisseur sans URL */ }
+  const gwUrl = (() => { try { return new URL(g.url); } catch { return null; } })();
+  const last = g.calls?.[0];
+  return `
+  <section class="card">
+    <div class="card-h"><h2>${tr("Routage")}</h2>
+      ${last ? `<span class="muted small">${tr("dernier appel : {time} · HTTP {status} · {latency}", { time: new Date(last.at).toLocaleTimeString(LOCALE), status: last.status, latency: fmt.s(last.latencyMs) })}</span>` : ""}</div>
+    <div class="route">
+      <div class="node"><span class="k">${tr("Votre application")}</span><span class="t">${esc(state.status?.name || tr("projet"))}</span>
+        <span class="d">${envNames ? `${esc(envNames.baseUrl)} = ${tr("la passerelle")}` : tr("endpoint compatible OpenAI")}</span></div>
+      <div class="arrow">${tr("requête OpenAI")}</div>
+      <div class="node gw"><span class="k">${tr("Passerelle llm-bench")}</span><span class="t">${esc(gwUrl ? gwUrl.host + gwUrl.pathname : g.url)}</span>
+        <span class="d">${tr("port {port}", { port: esc(gwUrl?.port || "") })}</span></div>
+      <div class="arrow">${tr("modèle remplacé · clé ajoutée")}</div>
+      <div class="node"><span class="k">${tr("Fournisseur")} ${tierChip(g.tier)}</span>
+        <span class="t">${g.target ? esc(g.target) : `<span class="warn-t">${tr("aucun modèle choisi")}</span>`}</span>
+        <span class="d">${host ? `${esc(host)} · ${tr("port {port}", { port: esc(port) })}` : "–"}</span></div>
+    </div>
+  </section>`;
+}
+
+/** Texte à coller dans le .env du projet pour l'appeler via la passerelle. */
+function gatewayEnvText(g) {
+  const envNames = state.status?.server?.env;
+  return envNames
+    ? `${envNames.baseUrl}=${g.url}\n${envNames.apiKey ? `${envNames.apiKey}=llm-bench   # ${tr("la vraie clé est ajoutée par la passerelle")}\n` : ""}${envNames.model}=<${tr("n'importe quel nom : remplacé par la passerelle")}>`
+    : `baseURL = ${g.url}\napiKey  = llm-bench   (${tr("la vraie clé est ajoutée par la passerelle")})`;
+}
+
+/** Détail compact d'un appel de la passerelle (colonne de droite). */
+function gatewayCallDetail(c) {
+  const h = c.http;
+  const u = h?.upstream, i = h?.incoming, r = h?.reply;
+  const key = u?.key ? `<span class="mono">${esc(u.keyHeader)}: </span><span class="mono" data-key="${esc(u.key)}">${esc(u.key.length > 12 ? `${u.key.slice(0, 6)}…${u.key.slice(-4)}` : "••••")}</span> <button class="link small" data-action="revealKey">${tr("afficher")}</button>` : `<span class="muted">${tr("aucune")}</span>`;
+  return `
+    ${c.error ? `<div class="banner fail small mono">${esc(c.error)}</div>` : ""}
+    ${h ? `<dl class="gwdl">
+      <dt>${tr("URL réelle")}</dt><dd class="mono">${esc(u.method)} ${esc(u.url)}</dd>
+      <dt>${tr("Hôte · port")}</dt><dd class="mono">${esc(u.host)} · ${u.port}</dd>
+      <dt>${tr("Clé envoyée")}</dt><dd>${key}</dd>
+      <dt>${tr("Appelé par")}</dt><dd class="mono">${esc(i.remoteAddress || "?")}:${i.remotePort ?? "?"} → :${i.localPort ?? "?"}${esc((() => { try { return new URL(i.url).pathname; } catch { return ""; } })())}</dd>
+      <dt>${tr("Réponse")}</dt><dd class="mono">HTTP ${r.status}${r.statusText ? ` ${esc(r.statusText)}` : ""} · ${tr("{n} octets", { n: r.bytes.toLocaleString(LOCALE) })} · ${fmt.s(c.latencyMs)}</dd>
+    </dl>
+    <div style="display:grid;gap:6px">
+      <details><summary>${tr("Requête reçue du serveur")}</summary>${requestBody(i.body)}<details><summary class="small">${tr("En-têtes")}</summary>${jsonPre(i.headers)}</details></details>
+      <details open><summary>${tr("Requête envoyée au fournisseur")}</summary>${requestBody(u.body)}<details><summary class="small">${tr("En-têtes")}</summary>${jsonPre(u.headers)}</details></details>
+      <details><summary>${tr("Réponse du fournisseur")}${Array.isArray(r.body) && c.stream ? ` (${tr("{n} événements SSE", { n: r.body.length })})` : ""}</summary>${jsonPre(r.body)}<details><summary class="small">${tr("En-têtes")}</summary>${jsonPre(r.headers)}</details></details>
+    </div>` : `<p class="muted small">${tr("Pas de détail HTTP pour cet appel.")}</p>`}`;
+}
+
 function viewGateway() {
   const g = state.gw;
   if (!g) return `<section class="card"><p class="empty"><span class="spin"></span> ${tr("Chargement…")}</p></section>`;
-  const envNames = state.status?.server?.env;
   const st = g.stats;
+  const sel = g.calls.find((c) => c.id === state.gwSel) || null;
+  const toggle = [["free", tr("Gratuit")], ["paid", tr("Payant")]].map(([t, l]) => {
+    const k = g.quick?.[t];
+    const on = g.tier === t;
+    return `<button type="button" class="gwt ${t} ${on ? "on" : ""}" data-action="gwUse" data-v="${esc(k || "")}" ${k ? "" : "disabled"} aria-pressed="${on}"
+      title="${esc(k || (t === "free" ? tr("aucun modèle gratuit : en choisir un dans la liste ci-dessous") : tr("aucun modèle payant : en choisir un dans la liste ci-dessous")))}">
+      <span class="l">${l}${on ? ` · ${tr("actif")}` : ""}</span><span class="m">${k ? esc(modelOf(k)) : tr("aucun")}</span></button>`;
+  }).join("");
   return `
+  <div class="pagehead">
+    <div><h1>${tr("Passerelle")}</h1><p>${tr("Un endpoint fixe pour votre projet ; le modèle réel se choisit ici.")}</p></div>
+    <div class="gwtoggle" role="group" aria-label="${tr("Bascule gratuit ou payant")}" title="${tr("Bascule vers le dernier modèle utilisé dans l'offre (sinon le profil de la config)")}">${toggle}</div>
+  </div>
+
+  ${gatewayRoute(g)}
+
   <section class="card">
-    <div class="card-h">
-      <div>
-        <div class="muted small">${tr("Modèle actuel de la passerelle")}</div>
-        <div class="gw-target">${g.target ? `<span class="mono">${esc(g.target)}</span> ${tierChip(g.tier)}${g.profile ? ` <span class="chip accent">${tr("profil {name}", { name: esc(g.profile) })}</span>` : ""}` : `<span class="warn-t">${tr("aucun : choisir un profil ou un modèle")}</span>`}</div>
-        ${g.updatedAt ? `<div class="muted small">${tr("choisi le {date}", { date: fmt.date(g.updatedAt) })}</div>` : ""}
-      </div>
-      <div style="display:grid;gap:6px;justify-items:end">
-        <div class="seg" title="${tr("Bascule vers le dernier modèle utilisé dans l'offre (sinon le profil de la config)")}">${[["free", tr("Gratuit")], ["paid", tr("Payant")]].map(([t, l]) => {
-          const k = g.quick?.[t];
-          return `<button type="button" class="${g.tier === t ? "on" : ""}" data-action="gwUse" data-v="${esc(k || "")}" ${k ? "" : "disabled"} title="${esc(k || (t === "free" ? tr("aucun modèle gratuit : en choisir un dans la liste ci-dessous") : tr("aucun modèle payant : en choisir un dans la liste ci-dessous")))}">${l}${k ? ` · <span class="mono">${esc(k.slice(k.indexOf("/") + 1))}</span>` : ""}</button>`;
-        }).join("")}</div>
-        ${g.profiles.length ? `<div class="muted small">${tr("Profils de la config :")} ${g.profiles.map((p) => `<button class="link small ${g.profile === p.name ? "strong" : ""}" data-action="gwUse" data-v="${esc(p.name)}" title="${esc(p.key)}">${esc(p.name)}</button>`).join(" · ")}</div>` : ""}
-      </div>
-    </div>
-    <form class="launch" data-form="gateway">
+    <div class="card-h"><h2>${tr("Brancher le projet")}</h2>
+      ${g.profiles.length ? `<span class="muted small">${tr("Profils de la config :")} ${g.profiles.map((p) => `<button class="link small ${g.profile === p.name ? "strong" : ""}" data-action="gwUse" data-v="${esc(p.name)}" title="${esc(p.key)}">${esc(p.name)}</button>`).join(" · ")}</span>` : ""}</div>
+    <div class="gwenv"><pre class="code">${esc(gatewayEnvText(g))}</pre><button class="b" data-action="gwCopy">${tr("Copier")}</button></div>
+    <p class="muted small" style="margin:10px 0 0">${tr("En ligne de commande, sur une passerelle déjà lancée :")} <span class="mono">llm-bench gateway use ${esc(g.profiles[0]?.name || tr("fournisseur/modèle"))}</span></p>
+    <form class="launch" data-form="gateway" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
       <label class="field">${tr("Offre")}
-        <span class="seg">${[["", tr("Toutes")], ["free", tr("Gratuites")], ["paid", tr("Payantes")]].map(([v, l]) => `<button type="button" class="${state.tierFilter === v ? "on" : ""}" data-action="tierFilter" data-v="${v}">${l}</button>`).join("")}</span>
+        <span class="seg">${[["", tr("Tous")], ["free", tr("Gratuits")], ["paid", tr("Payants")]].map(([v, l]) => `<button type="button" class="${state.tierFilter === v ? "on" : ""}" data-action="tierFilter" data-v="${v}">${l}</button>`).join("")}</span>
       </label>
       <div class="field grow">${tr("Autre modèle")}${modelDropdown("gwModel", gwPicked(g.target), { action: "gwPick" })}</div>
       <button class="b primary" type="submit">${tr("Utiliser ce modèle")}</button>
     </form>
   </section>
 
-  <section class="card">
-    <div class="card-h"><h2>${tr("Brancher un projet sur la passerelle")}</h2></div>
-    <p class="small" style="margin-top:0">${tr("La passerelle est un endpoint compatible OpenAI. Le projet l'appelle comme son fournisseur habituel ; le modèle réel est celui choisi ici, remplacé dans chaque requête (paramètres adaptés au fournisseur, clé API ajoutée par le bench).")}</p>
-    <pre>${esc(envNames
-      ? `${envNames.baseUrl}=${g.url}\n${envNames.apiKey ? `${envNames.apiKey}=llm-bench   # ${tr("la vraie clé est ajoutée par la passerelle")}\n` : ""}${envNames.model}=<${tr("n'importe quel nom : remplacé par la passerelle")}>`
-      : `baseURL = ${g.url}\napiKey  = llm-bench   (${tr("la vraie clé est ajoutée par la passerelle")})`)}</pre>
-    <p class="muted small">${tr("En ligne de commande, sur une passerelle déjà lancée :")} <span class="mono">llm-bench gateway use ${esc(g.profiles[0]?.name || tr("fournisseur/modèle"))}</span></p>
-  </section>
-
-  <section class="card">
-    <div class="card-h"><h2>${tr("Appels depuis le démarrage")} <span class="muted">${st.calls}</span></h2>
-      <span class="muted small">${st.errors ? `<span class="bad-t">${tr("{n} en erreur", { n: st.errors })}</span> · ` : ""}${st.promptTokens.toLocaleString(LOCALE)} → ${st.completionTokens.toLocaleString(LOCALE)} tokens · ${tr("coût {cost}", { cost: money(st.cost) })}${st.unknownCost ? ` (${tr("+ {n} appel(s) sans prix", { n: st.unknownCost })})` : ""}</span></div>
-    ${g.calls.length ? `<div class="table-wrap"><table>
-      <thead><tr><th>${tr("Heure")}</th><th>${tr("Modèle")}</th><th>${tr("Appel")}</th><th class="num">HTTP</th><th class="num">${tr("Latence")}</th><th class="num">${tr("Tokens")}</th><th class="num">${tr("Coût")}</th></tr></thead>
-      <tbody>${g.calls.map((c) => `<tr class="clickable" data-action="gwCall" data-id="${esc(c.id)}">
-        <td class="small">${new Date(c.at).toLocaleTimeString(LOCALE)}</td><td class="mono small">${esc(c.model)}</td><td><span class="chip ${c.error ? "bad" : "accent"}">${esc(callKindLabel(c.kind))}</span>${c.stream ? ' <span class="chip">stream</span>' : ""}</td>
-        <td class="num">${c.status}</td><td class="num">${fmt.s(c.latencyMs)}</td><td class="num">${c.promptTokens ? `${c.promptTokens} → ${c.completionTokens ?? "?"}` : "–"}</td><td class="num">${money(c.cost)}</td></tr>`).join("")}</tbody>
-    </table></div>` : `<p class="empty">${tr("Aucun appel pour l'instant.")}</p>`}
+  <section class="card" style="padding:0;overflow:hidden">
+      <div class="card-h" style="padding:14px 20px;margin:0;border-bottom:1px solid var(--border)">
+        <h2>${tr("Appels depuis le démarrage")} <span class="muted" style="font-weight:400">${st.calls}</span></h2>
+        <span class="muted small">${st.errors ? `<span class="bad-t">${tr("{n} en erreur", { n: st.errors })}</span> · ` : ""}${st.promptTokens.toLocaleString(LOCALE)} → ${st.completionTokens.toLocaleString(LOCALE)} tokens · ${tr("coût {cost}", { cost: money(st.cost) })}${st.unknownCost ? ` (${tr("+ {n} appel(s) sans prix", { n: st.unknownCost })})` : ""}</span>
+      </div>
+      ${g.calls.length ? `<div class="table-wrap"><table>
+        <thead><tr><th style="padding-left:20px">${tr("Heure")}</th><th>${tr("Appel")}</th><th>${tr("Modèle")}</th><th class="num">HTTP</th><th class="num">${tr("Latence")}</th><th class="num" style="padding-right:20px">${tr("Tokens")}</th></tr></thead>
+        <tbody>${g.calls.map((c) => `<tr class="clickable ${c === sel ? "gw-sel" : ""}" data-action="gwCall" data-id="${esc(c.id)}" title="${tr("Cliquer pour afficher le détail")}">
+          <td class="mono small" style="padding-left:20px">${new Date(c.at).toLocaleTimeString(LOCALE)}</td>
+          <td><span class="chip ${c.error ? "bad" : "accent"}">${esc(callKindLabel(c.kind))}</span>${c.stream ? ' <span class="chip">stream</span>' : ""}</td>
+          <td class="mono small">${esc(c.model)}</td><td class="num mono">${c.status}</td><td class="num mono">${fmt.s(c.latencyMs)}</td>
+          <td class="num mono small" style="padding-right:20px">${c.promptTokens ? `${c.promptTokens} → ${c.completionTokens ?? "?"}` : "–"}</td></tr>`).join("")}</tbody>
+      </table></div>` : `<p class="empty">${tr("Aucun appel pour l'instant.")}</p>`}
   </section>`;
 }
 
@@ -1747,6 +2633,17 @@ async function mcpTick() {
     if (prev && prev !== s.phase && s.phase === "failed") toast(`${s.name} : ${s.error || tr("échec")}`, true);
   }
   if (state.logFor) await loadLog();
+  await loadDockLog();
+}
+
+/** Journal affiché en bas de la page Serveurs. */
+async function loadDockLog() {
+  if (state.menu !== "mcp" || state.mtab !== "servers") return;
+  const s = dockServer();
+  if (!s) return;
+  const log = (await api(`/api/server/servers/${s.id}/log`).catch(() => ({ log: "" }))).log;
+  state.dockFor = s.id;
+  state.dockText = log;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -2068,15 +2965,17 @@ function viewServers() {
   return `
   <section class="card">
     <div class="card-h"><h2>${tr("Nouveau serveur")}</h2><span class="muted small">${tr("copie de {src} → {dst}", { src: `<span class="mono">${esc(ms.source || "")}</span>`, dst: `<span class="mono">${esc(ms.instancesDir || "")}/&lt;id&gt;</span>` })}</span></div>
-    <form class="launch" data-form="newServer">
-      <label class="field">${tr("Offre")}
-        <span class="seg">${[["", tr("Toutes")], ["free", tr("Gratuites")], ["paid", tr("Payantes")]].map(([v, l]) => `<button type="button" class="${state.tierFilter === v ? "on" : ""}" data-action="tierFilter" data-v="${v}">${l}</button>`).join("")}</span>
-      </label>
-      <label class="field grow">${tr("Modèle")}${modelDropdown("nsModel", n.model, { action: "nsModel", offerAdd: true })}</label>
-      <button class="link small" type="button" data-action="goModels" style="align-self:center">${tr("Gérer les modèles →")}</button>
+    <form data-form="newServer" style="display:grid;gap:14px">
+      <div class="btns">
+        <button class="b" type="button" data-action="goModels">${tr("Gérer les modèles →")}</button>
+        <span class="seg" role="group" aria-label="${tr("Offre")}">${[["", tr("Tous")], ["free", tr("Gratuits")], ["paid", tr("Payants")]].map(([v, l]) => `<button type="button" class="${state.tierFilter === v ? "on" : ""}" data-action="tierFilter" data-v="${v}" aria-pressed="${state.tierFilter === v}">${l}</button>`).join("")}</span>
+      </div>
+      <div class="launch">
+      <label class="field grow" style="flex:2 1 280px">${tr("Modèle")}${modelDropdown("nsModel", n.model, { action: "nsModel", offerAdd: true })}</label>
       <label class="field grow">${tr("Nom (facultatif)")}<input type="text" id="nsName" data-action="nsName" value="${esc(n.name)}" placeholder="${tr("ex. qwen 7b prompt v3")}"></label>
       ${(ms.shareDirs || []).length ? `<label class="small" title="${tr("Lien symbolique vers {dirs} du projet : pas d'installation, création en quelques secondes. Décocher pour un serveur totalement isolé.", { dirs: esc(ms.shareDirs.join(", ")) })}"><input type="checkbox" data-action="nsLink" ${n.linkModules ? "checked" : ""}> ${tr("Partager {dirs} (rapide)", { dirs: esc(ms.shareDirs.join(", ")) })}</label>` : ""}
       <button class="b primary" type="submit" ${canCreate ? "" : "disabled"}>${state.creating ? '<span class="spin"></span> ' : ""}${tr("Créer et démarrer")}</button>
+      </div>
     </form>
     <p class="muted small" style="margin:12px 0 0">${tr("Étapes : {steps}.", { steps: steps.join(" → ") })}
       ${tr("Le serveur appelle son modèle via le bench ({var} = proxy d'enregistrement).", { var: `<span class="mono">${esc(ms.env?.baseUrl || "")}</span>` })}</p>
@@ -2089,7 +2988,7 @@ function viewServers() {
       <tbody>${state.servers.map((s) => {
         const busy = isBusyPhase(s.phase);
         const live = s.phase === "running";
-        return `<tr>
+        return `<tr class="clickable ${state.dockLog === s.id ? "dock-on" : ""}" data-action="toggleDock" data-id="${esc(s.id)}" title="${state.dockLog === s.id ? tr("Cliquer pour masquer le journal") : tr("Cliquer pour afficher le journal en bas")}">
           <td><button class="link strong" data-action="serverInfo" data-id="${esc(s.id)}" title="${tr("Détail du serveur : dossier, variables d'environnement (dont l'URL du proxy LLM), URL, commandes")}">${esc(s.name)}</button><div class="muted small mono">${esc(s.id)}${s.linkedModules ? " · " + tr("node_modules partagé") : ""}</div></td>
           <td>${state.changingModel === s.id
             ? `<div class="row">${modelDropdown("cmModel-" + s.id, s.provider + "/" + s.model, { allTiers: true })}<button class="b primary" data-action="applyModel" data-id="${esc(s.id)}">OK</button><button class="icon" data-action="cancelModel">✕</button></div>`
@@ -2102,13 +3001,53 @@ function viewServers() {
               : `<button class="b" data-action="serverOp" data-op="start" data-id="${esc(s.id)}" ${busy ? "disabled" : ""}>${tr("Démarrer")}</button>`}
             <button class="b" data-action="serverOp" data-op="refresh" data-id="${esc(s.id)}" ${busy ? "disabled" : ""} title="${tr("Recopier le code actuel du projet, rebuild, redémarrer (l'environnement du serveur est conservé)")}">↻ ${tr("Code")}</button>
             <button class="icon" data-action="serverInfo" data-id="${esc(s.id)}" title="${tr("Détail : dossier, .env, URL du proxy LLM, URL du serveur, commandes")}">ⓘ</button>
-            <button class="icon" data-action="openLog" data-id="${esc(s.id)}" title="${tr("Journal")}">📄</button>
+            <button class="icon" data-action="toggleDock" data-id="${esc(s.id)}" title="${state.dockLog === s.id ? tr("Masquer le journal") : tr("Afficher le journal en bas de page")}">📄</button>
             <button class="icon" data-action="serverOp" data-op="reinstall" data-id="${esc(s.id)}" ${busy || s.linkedModules ? "disabled" : ""} title="${tr("Réinstaller les dépendances")}">📦</button>
             <button class="icon" data-action="deleteServer" data-id="${esc(s.id)}" ${busy ? "disabled" : ""} title="${tr("Supprimer le serveur et son dossier")}">🗑</button>
           </td>
         </tr>`;
       }).join("")}</tbody></table></div>`
       : `<p class="empty">${tr("Aucun serveur. Choisissez un modèle ci-dessus pour en créer un.")}</p>`}
+  </section>
+  ${dockLog()}`;
+}
+
+/** Serveur dont le journal est affiché en bas (choisi en cliquant sa ligne), ou null : journal masqué. */
+function dockServer() {
+  return state.servers.find((s) => s.id === state.dockLog) || null;
+}
+
+/** Ligne de journal colorée : lignes du bench en gris, erreurs en rouge, avertissements en orange. */
+function logLine(line) {
+  const t = esc(line);
+  if (/^\[bench [^\]]*\]/.test(line)) {
+    const m = t.match(/^(\[bench [^\]]*\])(.*)$/);
+    const warn = /ATTENTION|WARNING|ÉCHEC|FAILED/i.test(line);
+    return `<span class="lg-b">${m[1]}</span><span class="${warn ? "lg-w" : ""}">${m[2]}</span>`;
+  }
+  if (/\b(Error|TypeError|ReferenceError|Exception|ERR!|ECONNREFUSED|failed)\b|^\s+at /.test(line)) return `<span class="lg-e">${t}</span>`;
+  if (/\bWARN/.test(line)) return `<span class="lg-w">${t}</span>`;
+  return t;
+}
+
+function dockLog() {
+  const s = dockServer();
+  if (!s) return "";
+  const text = state.dockFor === s.id ? state.dockText : "";
+  const lines = String(text || "").split("\n").slice(-300);
+  const state_ = s.phase === "failed" ? `<span class="lg-e strong">${tr("échec")}${s.error ? " · " + esc(s.error) : ""}</span>` : phaseChip(s.phase);
+  return `
+  <section class="logdock" aria-labelledby="dockTitle">
+    <div class="logdock-h">
+      <h2 id="dockTitle">${tr("Journal")} · <span class="mono">${esc(s.name)}</span></h2>
+      <span class="small">${state_}</span>
+      <div class="btns" style="margin-left:auto">
+        ${state.servers.length > 1 ? `<select data-action="dockPick" aria-label="${tr("Serveur du journal")}">${state.servers.map((x) => `<option value="${esc(x.id)}" ${x.id === s.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select>` : ""}
+        <button type="button" class="b" data-action="openLog" data-id="${esc(s.id)}">${tr("Ouvrir dans une fenêtre")}</button>
+        <button type="button" class="b" data-action="toggleDock" data-id="${esc(s.id)}" aria-label="${tr("Masquer le journal")}" title="${tr("Masquer le journal")}">✕</button>
+      </div>
+    </div>
+    <pre id="dockPre">${text ? lines.map(logLine).join("\n") : `<span class="lg-b">${tr("(vide)")}</span>`}</pre>
   </section>`;
 }
 
@@ -2116,7 +3055,7 @@ function modalLog() {
   const s = state.servers.find((x) => x.id === state.logFor);
   return `<div class="overlay center" data-action="closeLayer"><div class="panel" data-stop style="width:min(1000px,100%)">
     <div class="panel-h"><div><h2>${tr("Journal")} · ${esc(s?.name || state.logFor)}</h2><div class="muted small mono">${esc(state.mStatus?.instancesDir || "")}/${esc(state.logFor)}/bench-instance.log · ${tr("400 dernières lignes, actualisé en continu")}</div></div><button class="icon" data-action="closeLayer">✕</button></div>
-    <pre id="logPre" style="max-height:70vh">${esc(state.logText || tr("(vide)"))}</pre></div></div>`;
+    <div class="logdock"><pre id="logPre" style="max-height:70vh">${state.logText ? String(state.logText).split("\n").map(logLine).join("\n") : `<span class="lg-b">${tr("(vide)")}</span>`}</pre></div></div></div>`;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -2232,12 +3171,11 @@ function viewMReport() {
   const r = state.mReport;
   const running = r.status === "running";
   const failing = r.results.filter((x) => x.status !== "pass");
-  const cases = state.mOnlyFailures ? r.cases.filter((c) => r.results.some((x) => x.caseId === c.id && x.status !== "pass")) : r.cases;
   return `
   <section class="card">
     <div class="card-h">
       <div>
-        <button class="link" data-action="closeMReport">← ${tr("Tous les rapports")}</button>
+        <button class="back" data-action="closeMReport" title="${tr("Raccourci : Échap")}"><span class="arrow">←</span>${tr("Retour à la liste des rapports")}</button>
         <h2 style="margin-top:6px">${esc(r.name || tr("Rapport du {date}", { date: fmt.date(r.date) }))} ${statusChip(r.status)}</h2>
         <div class="muted small">${fmt.date(r.date)} · ${tr("{c} cas × {r} run(s)", { c: r.cases.length, r: r.runs })}</div>
       </div>
@@ -2249,8 +3187,13 @@ function viewMReport() {
     </div>
   </section>
 
+  ${serverKpis(r)}
+  ${serverRanking(r)}
+  ${serverHeat(r)}
+
   <section class="card">
-    <div class="card-h"><h3>${tr("Synthèse par serveur")}</h3><span class="muted small">${tr("latences par requête (étapes en erreur exclues)")}</span></div>
+    <details><summary>${tr("Détails techniques par serveur (latences, appels LLM, tokens, coût)")}</summary>
+    <p class="muted small">${tr("latences par requête (étapes en erreur exclues)")}</p>
     <div class="table-wrap"><table>
       <thead><tr><th>${tr("Serveur")}</th><th>${tr("Score")}</th><th class="num">${tr("Vérifs OK")}</th><th class="num">${tr("Échecs")}</th><th class="num">${tr("Erreurs")}</th><th class="num">${tr("Erreurs techniques")}</th>
         <th class="num">${tr("Latence moy.")}</th><th class="num">${tr("Médiane")}</th><th class="num">${tr("Max")}</th>
@@ -2278,26 +3221,7 @@ function viewMReport() {
         </tr>`;
       }).join("")}</tbody>
     </table></div>
-  </section>
-
-  <section class="card">
-    <div class="card-h">
-      <h3>${tr("Résultats par cas")} <span class="muted small">${tr("cliquer un résultat pour le détail des étapes")}</span></h3>
-      <label class="small"><input type="checkbox" data-action="mOnlyFailures" ${state.mOnlyFailures ? "checked" : ""}> ${tr("Échecs seulement")}</label>
-    </div>
-    ${cases.length ? `<div class="table-wrap"><table>
-      <thead><tr><th>${tr("Cas")}</th>${r.servers.map((s) => `<th>${esc(s.name)}<div class="mono muted" style="font-weight:400">${esc(s.model)}</div></th>`).join("")}</tr></thead>
-      <tbody>${cases.map((c) => `
-        <tr>
-          <td style="min-width:240px"><span class="mono strong">${esc(c.id)}</span> ${c.category ? `<span class="chip">${esc(c.category)}</span>` : ""}<div class="muted small">${esc(c.steps.map((s) => s.message).join(" → "))}</div></td>
-          ${r.servers.map((s) => {
-            const rs = r.results.filter((x) => x.caseId === c.id && x.serverId === s.id);
-            if (!rs.length) return `<td class="muted">${running ? "…" : "–"}</td>`;
-            return `<td>${rs.map((x) => `<button class="pill ${x.status} ${state.mReplaying.has(x.id) ? "busy" : ""} ${state.mResultId === x.id ? "sel" : ""}" data-action="openMResult" data-id="${esc(x.id)}" title="${esc(x.status === "pass" ? tr("réussi") : x.failures.join(" ; "))}">${state.mReplaying.has(x.id) ? '<span class="spin"></span>' : RESULT_ICON[x.status]} ${fmt.s(x.latencyMs)}</button>`).join("")}
-              ${rs.filter((x) => x.status !== "pass").slice(0, 1).map((x) => `<div class="small bad-t">${esc(x.failures.slice(0, 2).join(" ; "))}</div>`).join("")}</td>`;
-          }).join("")}
-        </tr>`).join("")}</tbody>
-    </table></div>` : `<p class="empty">${state.mOnlyFailures ? tr("Aucun échec 🎉") : tr("Aucun résultat.")}</p>`}
+    </details>
   </section>`;
 }
 
@@ -2310,8 +3234,8 @@ function drawerMResult() {
   const busy = state.mReplaying.has(x.id);
   const label = { pass: tr("Réussi"), fail: tr("Échec"), error: tr("Erreur") }[x.status];
   return `
-  <div class="overlay" data-action="closeLayer">
-    <aside class="panel" data-stop>
+  <div class="overlay center" data-action="closeLayer">
+    <aside class="panel wide" data-stop>
       <div class="panel-h">
         <div><div class="muted small">${esc(s.name)} · <span class="mono">${esc(s.model)}</span> · run ${x.run}</div><h2 class="mono">${esc(x.caseId)}</h2>${c?.description ? `<div class="muted small">${esc(c.description)}</div>` : ""}</div>
         <button class="icon" data-action="closeLayer" title="${tr("Fermer")}">✕</button>
@@ -2337,8 +3261,8 @@ function drawerMResult() {
           ${st.reply != null ? `<div class="small muted">${tr("Réponse (message)")}</div><pre>${esc(st.reply)}</pre>` : ""}
           ${st.error ? `<div class="bad-t small mono">${esc(st.error)}</div>` : ""}
           ${st.checks.length ? `<ul class="checks">${st.checks.map((k) => `<li><span class="${k.pass ? "ok-t" : "bad-t"}">${k.pass ? "✓" : "✗"}</span> ${esc(k.label)}</li>`).join("")}</ul>` : `<div class="muted small">${tr("Pas de vérification : réussite si pas d'erreur technique.")}</div>`}
-          <div class="section">
-            <div class="small strong">${tr("Serveur")} · ${esc(state.mStatus?.chatPath || "")}</div>
+          <div class="trace server">
+            <div class="trace-h"><span class="ico">⇄</span><div><div class="t">${tr("Serveur")} · <span class="mono">${esc(state.mStatus?.chatPath || "")}</span></div><div class="sub">${tr("Échange entre le bench et le serveur testé")}</div></div></div>
             <details><summary class="small">${tr("Requête envoyée au serveur")}</summary><pre>${esc(JSON.stringify(st.request, null, 2))}</pre></details>
             <details><summary class="small">${tr("Réponse du serveur")}</summary><pre>${esc(typeof st.response === "string" ? st.response : JSON.stringify(st.response, null, 2))}</pre></details>
           </div>
@@ -2435,8 +3359,9 @@ function modalMEditor() {
 }
 
 function llmCallsBlock(calls) {
-  if (!calls.length) return `<div class="muted small">${tr("Aucun appel LLM enregistré pour cette étape.")}</div>`;
-  return `<div class="section"><div class="small strong">${tr("Appels LLM du serveur ({n})", { n: calls.length })}</div>
+  return `<div class="trace llm">
+    <div class="trace-h"><span class="ico">✦</span><div><div class="t">${tr("Appels LLM du serveur ({n})", { n: calls.length })}</div><div class="sub">${tr("Requêtes faites par le serveur au modèle pendant cette étape")}</div></div></div>
+    ${calls.length ? "" : `<div class="muted small">${tr("Aucun appel LLM enregistré pour cette étape.")}</div>`}
     ${calls.map((c, i) => {
       const msgs = c.request?.messages || [];
       return `<details ${c.error ? "open" : ""}>
@@ -2492,6 +3417,9 @@ function gwPicked(target) {
   return [picks[tf], target].find((k) => k && keys.has(k)) || "";
 }
 
+/** Vérification ajoutée par défaut aux nouveaux cas et étapes : réponse dans la langue du message utilisateur. */
+const LANGUAGE_CHECK = () => ({ type: "language", value: "message", path: "" });
+
 const GW_ACTIONS = {
   gwPick(el) {
     const picks = state.gwPicks ||= {};
@@ -2505,16 +3433,7 @@ const GW_ACTIONS = {
     document.querySelectorAll(".picker-pop:not([hidden])").forEach((p) => { if (p !== pop) p.hidden = true; });
     pop.hidden = !pop.hidden;
     if (pop.hidden) return;
-    // Position fixe sous le bouton : la liste n'est pas coupée par un tableau ou une carte à défilement.
-    const r = el.getBoundingClientRect();
-    const below = innerHeight - r.bottom - 12;
-    pop.style.position = "fixed";
-    pop.style.left = `${r.left}px`;
-    pop.style.width = `${Math.max(r.width, 280)}px`;
-    pop.style.right = "auto";
-    if (below < 220 && r.top > below) { pop.style.top = "auto"; pop.style.bottom = `${innerHeight - r.top + 4}px`; }
-    else { pop.style.bottom = "auto"; pop.style.top = `${r.bottom + 4}px`; }
-    pop.querySelector(".picker-list").style.maxHeight = `${Math.max(160, Math.min(320, (below < 220 && r.top > below ? r.top : below) - 60))}px`;
+    placePop(el, pop, 280);
     const q = pop.querySelector("input"); q.value = ""; actions.pickerFilter(q); q.focus();
     pop.querySelector(".picker-o.on")?.scrollIntoView({ block: "nearest" });
   },
@@ -2544,6 +3463,9 @@ const GW_ACTIONS = {
     if (!shown) { k.dataset.masked = k.textContent; k.textContent = k.dataset.key; } else k.textContent = k.dataset.masked;
     el.textContent = shown ? tr("afficher") : tr("masquer");
   },
+  async gwCopy() {
+    try { await navigator.clipboard.writeText(gatewayEnvText(state.gw)); toast(tr("Copié")); } catch { toast(tr("Copie impossible : sélectionnez le texte"), true); }
+  },
   gwCall(el) {
     // Par identifiant : la liste est rafraîchie en continu, un index pourrait désigner un autre appel.
     const c = state.gw.calls.find((x) => x.id === el.dataset.id);
@@ -2553,25 +3475,28 @@ const GW_ACTIONS = {
     // Les clients de chat renvoient toute la conversation à chaque appel : ce qui précède le dernier
     // message utilisateur est de l'historique, pas une trace d'un autre appel.
     const lastUser = all.findLastIndex((m) => m.role === "user");
-    const msg = (m) => {
+    const text = (m) => {
       const content = typeof m.content === "string" ? m.content : JSON.stringify(m.content);
       const ref = content.match(/^<<prompt:([0-9a-f]+)>>$/);
-      return `<pre><b>${esc(m.role)}</b> ${esc(ref ? prompts[ref[1]] || content : content)}</pre>`;
+      return ref ? prompts[ref[1]] || content : content;
     };
+    const msg = (m) => ["system", "developer"].includes(m.role)
+      ? `<details><summary class="small">${tr("Prompt système ({chars} caractères)", { chars: text(m).length.toLocaleString(LOCALE) })}</summary><pre>${esc(text(m))}</pre></details>`
+      : `<pre><b>${esc(m.role)}</b> ${esc(text(m))}</pre>`;
     const system = all.filter((m, i) => i < lastUser && ["system", "developer"].includes(m.role));
     const history = all.filter((m, i) => i < lastUser && !["system", "developer"].includes(m.role));
     const current = lastUser < 0 ? all : all.slice(lastUser);
     const msgs = system.map(msg).join("")
       + (history.length ? `<details><summary class="small">${tr("Historique de conversation renvoyé par votre serveur dans cette requête ({n} message(s))", { n: history.length })}</summary><div style="display:grid;gap:8px;margin-top:8px">${history.map(msg).join("")}</div></details>` : "")
       + current.map(msg).join("");
-    state.modal = `<div class="overlay center" data-action="closeModal"><div class="panel" data-stop>
-      <div class="panel-h"><div><h2>${esc(callKindLabel(c.kind))} · <span class="mono">${esc(c.model)}</span></h2><div class="muted small">${fmt.date(c.at)} · HTTP ${c.status} · ${fmt.s(c.latencyMs)}</div></div><button class="icon" data-action="closeModal">✕</button></div>
-      ${c.error ? `<div class="bad-t small mono">${esc(c.error)}</div>` : ""}
+    state.gwSel = c.id;
+    state.modal = `<div class="overlay center" data-action="closeModal"><div class="panel" data-stop style="width:min(1000px,100%)">
+      <div class="panel-h"><div><h2>${esc(callKindLabel(c.kind))} · <span class="mono">${esc(c.model)}</span></h2><div class="muted small">${fmt.date(c.at)} · HTTP ${c.status} · ${fmt.s(c.latencyMs)}${c.promptTokens ? ` · ${c.promptTokens} → ${c.completionTokens ?? "?"} tokens` : ""}</div></div><button class="icon" data-action="closeModal">✕</button></div>
+      <div class="section"><h3>${tr("Appel HTTP")}</h3><div class="gwdetail">${gatewayCallDetail(c)}</div></div>
       <div class="section"><h3>${tr("Messages envoyés")}</h3>${msgs || '<p class="muted small">–</p>'}</div>
       <div class="section"><h3>${tr("Réponse")}</h3>${jsonPre(c.content ?? c.response)}</div>
-      ${httpExchange(c)}
     </div></div>`;
-    renderLayer();
+    render(); renderLayer();
   },
 };
 
@@ -2598,15 +3523,23 @@ async function gwSet(target) {
 }
 
 const MCP_ACTIONS = {
+  toggleSide() {
+    state.sideCollapsed = !state.sideCollapsed; store.set("sideCollapsed", state.sideCollapsed);
+    renderSide.last = null; // ré-anime le sous-menu à la réouverture
+    render();
+  },
   async menu(el) {
+    // Clic sur le menu déjà ouvert : plie / déplie son sous-menu (barre dépliée seulement).
+    if (el.dataset.menu === state.menu && el.hasAttribute?.("aria-expanded") && !state.sideCollapsed) { state.subFolded = !state.subFolded; render(); return; }
+    state.subFolded = false;
     state.menu = el.dataset.menu; store.set("menu", state.menu);
     state.resultId = null; state.mResultId = null; state.logFor = null;
     render(); renderLayer();
-    if (state.menu === "mcp") { await Promise.all([guard(loadServers), guard(loadMCases), loadAvail()]); }
+    if (state.menu === "mcp") { await Promise.all([guard(loadServers), guard(loadMCases), loadAvail()]); await guard(loadDockLog); }
     else if (state.menu === "gw") { await Promise.all([guard(loadGateway), loadAvail()]); }
-    else { await Promise.all([loadModels(), loadAvail()]); }
+    else { await Promise.all([loadModels(), loadAvail(), loadLeaderboard()]); }
     render();
-    if (state.menu === "models" && state.modtab === "free" && state.status?.ollama && !state.library) actions.searchLibrary();
+    if (freeListShown() && state.status?.ollama && !state.library) actions.searchLibrary();
     if (state.menu === "llm" && (state.tab === "prompt" || !state.status?.prompt)) await actions.promptOpen();
   },
   async mtab(el) {
@@ -2614,7 +3547,7 @@ const MCP_ACTIONS = {
     state.mResultId = null;
     render(); renderLayer();
     if (state.mtab === "reports") { await guard(loadMReports); if (state.mReportId) await guard(() => loadMReport(state.mReportId)); }
-    if (state.mtab === "servers") { await Promise.all([guard(loadServers), loadAvail()]); }
+    if (state.mtab === "servers") { await Promise.all([guard(loadServers), loadAvail()]); await guard(loadDockLog); }
     if (state.mtab === "run") { await guard(loadServers); }
     if (state.mtab === "cases") { await guard(loadMCases); }
     if (state.mtab === "env") { await guard(loadEnv); }
@@ -2633,12 +3566,20 @@ const MCP_ACTIONS = {
     });
     state.savingEnv = false; render();
   },
+  async modview(el) {
+    state.modview = el.dataset.tab; store.set("modview", state.modview);
+    render();
+    await Promise.all([loadModels(), loadAvail(), loadLeaderboard()]);
+    render();
+    if (freeListShown() && state.status?.ollama && !state.library) actions.searchLibrary();
+  },
   async modtab(el) {
     state.modtab = el.dataset.tab; store.set("modtab", state.modtab);
+    state.modview = "list"; store.set("modview", "list");
     render();
     await Promise.all([loadModels(), loadAvail()]);
     render();
-    if (state.modtab === "free" && state.status?.ollama && !state.library) actions.searchLibrary();
+    if (freeListShown() && state.status?.ollama && !state.library) actions.searchLibrary();
   },
 
   // Serveurs
@@ -2659,6 +3600,7 @@ const MCP_ACTIONS = {
       const paid = el.value === ADD_PAID;
       el.value = state.newServer.model;
       state.modtab = paid ? "paid" : "free"; store.set("modtab", state.modtab);
+      state.modview = "list"; store.set("modview", "list");
       await actions.menu({ dataset: { menu: "models" } });
       if (paid) return actions.addProvider();
       $("#libQuery")?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -2849,6 +3791,14 @@ const MCP_ACTIONS = {
   async copyText(el) {
     try { await navigator.clipboard.writeText(el.dataset.text); toast(tr("Copié")); } catch { toast(tr("Copie impossible"), true); }
   },
+  async toggleDock(el) {
+    // Même serveur : masquer ; autre serveur : basculer sur son journal.
+    if (state.dockLog === el.dataset.id) { state.dockLog = null; render(); return; }
+    state.dockLog = el.dataset.id; state.dockText = ""; state.dockFor = null; state.dockStick = true;
+    render(); await guard(loadDockLog); render();
+    $(".content .logdock")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  },
+  async dockPick(el) { state.dockLog = el.value; state.dockText = ""; state.dockFor = null; render(); await guard(loadDockLog); render(); },
   async openLog(el) { state.logFor = el.dataset.id; state.logText = ""; renderLayer(); await guard(loadLog); renderLayer(); const pre = $("#logPre"); if (pre) pre.scrollTop = pre.scrollHeight; },
   async deleteServer(el) {
     if (!confirm(tr("Arrêter et supprimer « {name} » et son dossier ?", { name: serverName(el.dataset.id) }))) return;
@@ -2903,7 +3853,7 @@ const MCP_ACTIONS = {
   async openMReport(el) {
     state.mReportId = el.dataset.id; store.set("mReportId", state.mReportId);
     state.menu = "mcp"; state.mtab = "reports"; store.set("menu", "mcp"); store.set("mtab", "reports");
-    state.mResultId = null; state.mOnlyFailures = false;
+    state.mResultId = null; state.mOnlyFailures = false; state.mHeatFilter = { cat: null, status: "" };
     await guard(() => loadMReport(state.mReportId));
     render(); renderLayer();
   },
@@ -2920,6 +3870,8 @@ const MCP_ACTIONS = {
     });
   },
   mOnlyFailures(el) { state.mOnlyFailures = el.checked; render(); },
+  mHeatCat(el) { state.mHeatFilter.cat = el.value === "*" ? null : el.value; render(); },
+  mHeatStatus(el) { state.mHeatFilter.status = el.dataset.v; render(); },
   openMResult(el) { state.mResultId = el.dataset.id; render(); renderLayer(); },
   async mReplay(el) { await mReplayOne(el.dataset.id); },
   async mReplayFailures() {
@@ -2948,7 +3900,7 @@ const MCP_ACTIONS = {
 
   // Cas de test serveurs
   newMCase() {
-    state.mEditing = { originalId: null, draft: { id: "", description: "", category: "", ...caseDefaults(), steps: [{ message: "", checks: [{ type: "notError" }] }] } };
+    state.mEditing = { originalId: null, draft: { id: "", description: "", category: "", ...caseDefaults(), steps: [{ message: "", checks: [{ type: "notError" }, LANGUAGE_CHECK()] }] } };
     renderLayer();
   },
   editMCase(el) {
@@ -2969,7 +3921,7 @@ const MCP_ACTIONS = {
       await loadMCases(); render(); toast(tr("Cas supprimé"));
     });
   },
-  addMStep() { readEditor(); state.mEditing.draft.steps.push({ message: "", checks: [{ type: "notError" }] }); renderLayer(); },
+  addMStep() { readEditor(); state.mEditing.draft.steps.push({ message: "", checks: [{ type: "notError" }, LANGUAGE_CHECK()] }); renderLayer(); },
   removeMStep(el) { readEditor(); state.mEditing.draft.steps.splice(Number(el.dataset.i), 1); renderLayer(); },
   addMCheck(el) { readEditor(); const st = state.mEditing.draft.steps[Number(el.dataset.i)]; (st.checks ||= []).push(freshMCheck("kind")); renderLayer(); },
   removeMCheck(el) { readEditor(); state.mEditing.draft.steps[Number(el.dataset.i)].checks.splice(Number(el.dataset.j), 1); renderLayer(); },
@@ -2995,7 +3947,14 @@ const MCP_ACTIONS = {
 // Actions
 // =============================================================================================
 const actions = {
-  setLang(el) { store.set("lang", el.dataset.v); location.reload(); },
+  setLang(el) {
+    if (el.dataset.v === LANG) return;
+    // Laisse la pastille glisser avant de recharger la page dans l'autre langue.
+    el.parentElement.className = "lang-switch " + el.dataset.v;
+    el.parentElement.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === el));
+    store.set("lang", el.dataset.v);
+    setTimeout(() => location.reload(), 220);
+  },
   async tab(el) {
     state.tab = el.dataset.tab;
     store.set("tab", state.tab);
@@ -3053,6 +4012,34 @@ const actions = {
     if (el.dataset.v === "invert") visible.forEach((id) => (sel.has(id) ? sel.delete(id) : sel.add(id)));
     state.selCases = [...sel]; store.set("selCases", state.selCases); render();
   },
+  lbSearch(el) { state.lbQuery = el.value; render(); },
+  async testModel(el) {
+    state.selModels = new Set([el.dataset.name]); store.set("selModels", [...state.selModels]);
+    state.tab = "run"; store.set("tab", "run");
+    await actions.menu({ dataset: { menu: "llm" } });
+  },
+  async goPull() {
+    if (!freeListShown()) await actions.modtab({ dataset: { tab: "free" } });
+    $("#pullName")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    $("#pullName")?.focus();
+  },
+  toggleCat(el) {
+    const cs = filteredCases().filter((c) => (c.category || "") === el.dataset.cat).map((c) => c.id);
+    const sel = new Set(state.selCases);
+    cs.forEach((id) => (el.checked ? sel.add(id) : sel.delete(id)));
+    state.selCases = [...sel]; store.set("selCases", state.selCases); render();
+  },
+  openCat(el) { const c = el.dataset.cat; state.openCats.has(c) ? state.openCats.delete(c) : state.openCats.add(c); render(); },
+  async selFailures() {
+    await guard(async () => {
+      const last = state.reports[0];
+      const r = await api("/api/reports/" + last.id);
+      const failing = [...new Set(r.results.filter((x) => x.status !== "pass").map((x) => x.caseId))].filter((id) => state.cases.some((c) => c.id === id));
+      state.selCases = failing; store.set("selCases", state.selCases);
+      toast(failing.length ? tr("{n} cas en échec sélectionné(s)", { n: failing.length }) : tr("Aucun échec dans le dernier rapport"));
+    });
+    render();
+  },
   toggleCase(el) {
     const sel = new Set(state.selCases);
     el.checked ? sel.add(el.dataset.id) : sel.delete(el.dataset.id);
@@ -3081,7 +4068,7 @@ const actions = {
   async openReport(el) {
     state.reportId = el.dataset.id; store.set("reportId", state.reportId);
     state.tab = "reports"; store.set("tab", "reports");
-    state.resultId = null; state.onlyFailures = false;
+    state.resultId = null; state.onlyFailures = false; state.heatFilter = { cat: null, status: "" };
     await guard(() => loadReport(state.reportId));
     render(); renderLayer();
   },
@@ -3098,9 +4085,13 @@ const actions = {
     });
   },
   onlyFailures(el) { state.onlyFailures = el.checked; render(); },
+  heatCat(el) { state.heatFilter.cat = el.value === "*" ? null : el.value; render(); },
+  heatStatus(el) { state.heatFilter.status = el.dataset.v; render(); },
   openResult(el) { state.resultId = el.dataset.id; render(); renderLayer(); },
-  openDiff(el) { state.diffCase = el.dataset.case; state.diffRef = null; state.modal = modalDiff(); renderLayer(); },
-  diffRef(el) { state.diffRef = el.value; state.modal = modalDiff(); renderLayer(); },
+  openDiff(el) { state.diffCase = el.dataset.case; state.mDiffCase = null; state.diffRef = null; state.modal = modalDiff(); renderLayer(); },
+  diffRef(el) { state.diffRef = el.value; state.modal = state.mDiffCase ? modalMDiff() : modalDiff(); renderLayer(); },
+  openMDiff(el) { state.mDiffCase = el.dataset.case; state.mDiffStep = 0; state.diffRef = null; state.modal = modalMDiff(); renderLayer(); },
+  mDiffStep(el) { state.mDiffStep = Number(el.dataset.i); state.modal = modalMDiff(); renderLayer(); },
   async replay(el) { await replayOne(el.dataset.id); },
   async replayFailures() {
     const ids = failingResults(state.report).map((x) => x.id);
@@ -3116,7 +4107,7 @@ const actions = {
       <pre style="max-height:70vh">${esc(state.report.systemPrompt)}</pre></div></div>`;
     renderLayer();
   },
-  closeModal() { state.modal = null; renderLayer(); },
+  closeModal() { state.modal = null; state.mDiffCase = null; render(); renderLayer(); },
   downloadReport() {
     const { summary, ...report } = state.report;
     const a = document.createElement("a");
@@ -3139,7 +4130,9 @@ const actions = {
   // Cas de test
   newCase() {
     const nc = state.status?.prompt?.newCase || {};
-    state.editing = { originalId: null, draft: structuredClone({ id: "", description: "", category: "", message: "", history: [], checks: [], ...nc }) };
+    const draft = structuredClone({ id: "", description: "", category: "", message: "", history: [], checks: [], ...nc });
+    if (!draft.checks.some((k) => k.type === "language")) draft.checks.push(LANGUAGE_CHECK());
+    state.editing = { originalId: null, draft };
     renderLayer();
   },
   editCase(el) {
@@ -3234,6 +4227,10 @@ async function replayOne(id, quiet = false) {
 }
 
 // ---- Délégation d'événements ----
+// Journal en bas de la page Serveurs : il suit les nouvelles lignes sauf si l'utilisateur remonte.
+document.addEventListener("scroll", (e) => {
+  if (e.target?.id === "dockPre") state.dockStick = e.target.scrollTop + e.target.clientHeight >= e.target.scrollHeight - 20;
+}, true);
 document.addEventListener("click", (e) => {
   document.querySelectorAll(".picker-pop:not([hidden])").forEach((p) => { if (!p.closest("[data-picker]").contains(e.target)) p.hidden = true; });
 }, true);
@@ -3242,6 +4239,15 @@ addEventListener("scroll", (e) => {
 }, true);
 addEventListener("resize", () => document.querySelectorAll(".picker-pop:not([hidden])").forEach((p) => { p.hidden = true; }));
 document.addEventListener("keydown", (e) => {
+  if ((e.key === "ArrowDown" || e.key === "ArrowUp") && e.target.closest?.(".picker-pop")) {
+    const opts = [...e.target.closest(".picker-pop").querySelectorAll(".picker-o:not([hidden]):not(:disabled)")];
+    if (opts.length) {
+      e.preventDefault();
+      const i = opts.indexOf(document.activeElement);
+      opts[e.key === "ArrowDown" ? Math.min(opts.length - 1, i + 1) : Math.max(0, i < 0 ? 0 : i - 1)].focus();
+    }
+    return;
+  }
   if (e.key === "Enter" && e.target.matches(".picker-pop input")) {
     e.preventDefault();
     e.target.closest(".picker-pop").querySelector(".picker-o:not([hidden]):not(:disabled)")?.click();
@@ -3257,6 +4263,8 @@ document.addEventListener("click", (e) => {
   if (!el || (stop && !stop.contains(el))) return;
   if (el.matches("input, select") ) return; // gérés par "change"
   if (el.classList.contains("overlay") && e.target !== el) return; // clic dans le panneau
+  // Ligne cliquable : un clic sur un bouton, un lien ou une liste de la ligne garde son propre effet.
+  if (el.tagName === "TR" && e.target.closest("button, a, input, select, label, .picker")) return;
   e.preventDefault();
   actions[el.dataset.action]?.(el);
 });
@@ -3277,7 +4285,14 @@ document.addEventListener("submit", (e) => {
   if (form.dataset.form === "newServer") actions.createServer();
   if (form.dataset.form === "gateway") { const v = $("#gwModel")?.value; if (v) gwSet(v); }
 });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("#layer").innerHTML) actions.closeLayer(); });
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if ($("#layer").innerHTML) return actions.closeLayer();
+  if (e.target.matches?.("input, textarea, select")) return;
+  // Échap sur un rapport ouvert : retour à la liste (même effet que le bouton « Retour »).
+  const back = $("button.back[data-action]");
+  if (back) actions[back.dataset.action]?.(back);
+});
 
 // =============================================================================================
 // Rafraîchissement périodique (campagne en cours, téléchargements)
@@ -3296,11 +4311,11 @@ async function tick() {
       state.lastFinished = wasActive.reportId;
       state.activeReport = null;
       toast(tr("Campagne terminée"));
-      await loadReports();
+      await Promise.all([loadReports(), loadLeaderboard()]);
       if (state.reportId === wasActive.reportId) await loadReport(state.reportId);
       await loadModels();
     }
-    if ((state.menu === "models" && state.modtab === "free") || state.pulls.some((p) => !p.done)) {
+    if (freeListShown() || state.pulls.some((p) => !p.done)) {
       const before = state.pulls.filter((p) => !p.done).length;
       state.pulls = await api("/api/pulls");
       const after = state.pulls.filter((p) => !p.done).length;
@@ -3309,19 +4324,21 @@ async function tick() {
     await mcpTick();
     if (state.menu === "gw" || state.gw) await loadGateway().catch(() => {});
     const sig = JSON.stringify([state.menu, state.active, state.pulls, state.report?.results?.length, state.report?.status, state.models.length,
-      state.mActive, state.servers.map((x) => [x.id, x.phase, x.error, x.updatedAt, x.model]), state.mReport?.results?.length, state.mReport?.status, state.logText.length,
+      state.mActive, state.servers.map((x) => [x.id, x.phase, x.error, x.updatedAt, x.model]), state.mReport?.results?.length, state.mReport?.status, state.logText.length, state.dockFor, state.dockText.length,
       state.gw?.target, state.gw?.stats?.calls]);
-    if (sig !== lastSig) {
+    // Pas de rendu pendant une saisie ou une popin (sauf la passerelle : la popin de détail d'un appel est
+    // dans #layer, la liste peut se mettre à jour dessous). La signature n'est retenue qu'une fois affichée :
+    // un changement survenu pendant une popin est rendu au tick qui suit sa fermeture.
+    const blocked = state.editing || state.mEditing || (state.modal && state.menu !== "gw") || state.provDraft || state.keyDraft || state.changingModel;
+    if (sig !== lastSig && !blocked) {
       lastSig = sig;
-      if (!state.editing && !state.mEditing && !state.modal && !state.provDraft && !state.keyDraft && !state.changingModel) {
-        render();
-        if (state.resultId || state.mResultId || state.logFor) {
-          const pre = $("#logPre");
-          const atBottom = !pre || pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 20;
-          renderLayer();
-          const next = $("#logPre");
-          if (next && atBottom) next.scrollTop = next.scrollHeight;
-        }
+      render();
+      if (state.resultId || state.mResultId || state.logFor) {
+        const pre = $("#logPre");
+        const atBottom = !pre || pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 20;
+        renderLayer();
+        const next = $("#logPre");
+        if (next && atBottom) next.scrollTop = next.scrollHeight;
       }
     }
   } catch {
@@ -3337,7 +4354,7 @@ async function tick() {
 (async () => {
   await guard(loadStatus);
   const p = state.status?.prompt, sv = state.status?.server;
-  await Promise.all([loadModels(), loadAvail(), guard(loadGateway), guard(loadMStatus),
+  await Promise.all([loadModels(), loadAvail(), loadLeaderboard(), guard(loadGateway), guard(loadMStatus),
     p ? guard(loadCases) : null, p ? guard(loadReports) : null,
     sv ? guard(loadServers) : null, sv ? guard(loadMCases) : null, sv ? guard(loadMReports) : null, sv ? guard(loadEnv) : null]);
   state.selCases ??= [];
@@ -3345,7 +4362,7 @@ async function tick() {
   if (state.reportId) await loadReport(state.reportId).catch(() => { state.reportId = null; store.set("reportId", null); });
   if (state.mReportId) await loadMReport(state.mReportId).catch(() => { state.mReportId = null; store.set("mReportId", null); });
   render();
-  if (state.menu === "models" && state.modtab === "free" && state.status?.ollama) actions.searchLibrary();
+  if (freeListShown() && state.status?.ollama) actions.searchLibrary();
   if (state.menu === "llm" && (state.tab === "prompt" || !state.status?.prompt)) actions.promptOpen();
   tick();
 })();

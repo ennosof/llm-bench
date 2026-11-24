@@ -5,8 +5,21 @@
     "description": "Recherche par auteur",
     "message": "Vous avez des livres de Victor Hugo ?",
     "checks": [
-      { "type": "intent", "value": "search" },
-      { "type": "path", "path": "query", "op": "contains", "value": "hugo" }
+      {
+        "type": "intent",
+        "value": "search"
+      },
+      {
+        "type": "path",
+        "path": "query",
+        "op": "contains",
+        "value": "hugo"
+      },
+      {
+        "type": "language",
+        "value": "message",
+        "path": ""
+      }
     ]
   },
   {
@@ -15,14 +28,37 @@
     "description": "Suivi de commande avec numéro",
     "message": "Where is my order 48213?",
     "checks": [
-      { "type": "intent", "value": "order_status" },
-      { "type": "path", "path": "orderId", "op": "equals", "value": "48213" }
+      {
+        "type": "intent",
+        "value": "order_status"
+      },
+      {
+        "type": "path",
+        "path": "orderId",
+        "op": "equals",
+        "value": "48213"
+      },
+      {
+        "type": "language",
+        "value": "message",
+        "path": ""
+      }
     ]
   },
   {
     "id": "greeting",
     "category": "other",
     "message": "Bonjour !",
-    "checks": [{ "type": "intent", "value": "other" }]
+    "checks": [
+      {
+        "type": "intent",
+        "value": "other"
+      },
+      {
+        "type": "language",
+        "value": "message",
+        "path": ""
+      }
+    ]
   }
 ]

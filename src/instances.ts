@@ -414,6 +414,12 @@ export async function createInstance(opts: { model: string; name?: string; linkM
   saveMeta(instance);
   writeFileSync(join(instanceDir(id), envFileName()), overrideEnv(sourceEnv(), { ...env, [target().env.port]: String(port) }));
   log(id, tr("Création : {name} · port {port}", { name: instance.name, port }));
+  // Sans le fichier d'environnement du projet (souvent ignoré par git, donc absent d'un clone), la copie
+  // ne reçoit que les variables du modèle : les autres (endpoints, clés…) manqueront au serveur.
+  const sourceEnvPath = join(target().source, envFileName());
+  if (!existsSync(sourceEnvPath)) {
+    log(id, tr("ATTENTION : {file} introuvable. La copie ne reçoit que les variables du modèle et du port ; les autres variables du projet seront absentes. Créez ce fichier dans le projet (ou renseignez server.envFile), puis recréez le serveur.", { file: sourceEnvPath }));
+  }
 
   void prepare(id, { install: true });
   return instance;

@@ -89,8 +89,9 @@ function findRoute(root: string, words: RegExp, fallback: string, label: string)
         const text = readFileSync(p, "utf8");
         // Express / Fastify / Hono : app.post("/chat") · Nest : @Post("chat") · FastAPI / Flask : @app.post("/chat"),
         // @app.route("/chat") · Go : HandleFunc("/chat", r.POST("/chat" · Spring : @PostMapping("/chat") ·
-        // ASP.NET : MapPost("/chat" · Laravel : Route::post('/chat' · Rails : post "/chat"
-        const routes = /(?:\.(?:get|post|all|route|GET|POST|HandleFunc|Handle|MapGet|MapPost)|@(?:Get|Post|Controller|(?:Get|Post|Request)Mapping)|@\w+\.(?:get|post|route)|Route::(?:get|post)|^\s*(?:get|post))\(?\s*(?:value\s*=\s*)?["'`](\/?[\w\-/]*)["'`]/gm;
+        // ASP.NET : MapPost("/chat" · Laravel : Route::post('/chat' · Rails : post "/chat" ·
+        // Go 1.22 : mux.HandleFunc("POST /chat"
+        const routes = /(?:\.(?:get|post|all|route|GET|POST|HandleFunc|Handle|MapGet|MapPost)|@(?:Get|Post|Controller|(?:Get|Post|Request)Mapping)|@\w+\.(?:get|post|route)|Route::(?:get|post)|^\s*(?:get|post))\(?\s*(?:value\s*=\s*)?["'`](?:(?:GET|POST|PUT|PATCH|DELETE)\s+)?(\/?[\w\-/]*)["'`]/gm;
         for (const m of text.matchAll(routes)) {
           const route = "/" + m[1].replace(/^\/+/, "");
           if (words.test(route)) hits.set(route, (hits.get(route) ?? 0) + 1);

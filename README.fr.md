@@ -480,9 +480,17 @@ Dans les vérifications de date : `J+1` ou une date fixe `2026-12-24`.
 | `textMatches` | les deux | Le texte correspond à une expression régulière |
 | `prose` | les deux | Texte rédigé : non vide et pas un code (ex. `empty_results`) |
 | `maxLatency` | les deux | Temps de réponse ≤ N secondes |
+| `language` | les deux | Langue de la réponse : la même que le message utilisateur (`message`, par défaut) ou une langue donnée (`fr`, `en`, `es`…). Chemin JSON facultatif du texte à analyser (ex. `reply`) |
 | `kind` | serveur | Type de réponse (`chat.kind`) |
 | `notError` | serveur | Ni erreur HTTP, ni erreur technique |
 | `status` | serveur | Code HTTP |
+
+À propos de `language` : la détection ne fait appel à aucun service externe. Langues reconnues :
+français, anglais, espagnol, allemand, italien, portugais, néerlandais (mots courants), arabe, russe,
+chinois, japonais, coréen, hébreu, grec (écriture). Pour une réponse JSON sans chemin, seules ses
+phrases rédigées sont analysées (les clés et les codes comme `no_results` sont ignorés). Le résultat
+indique les langues détectées, ex. `langue = celle du message (réponse en fr, attendu en)`. Un message
+trop court pour en déduire la langue (`ok`, un nom propre) n'est pas vérifié.
 
 Dans le bench serveur, une étape **sans vérification** réussit si elle n'est pas une erreur technique.
 

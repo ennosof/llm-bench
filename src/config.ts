@@ -5,7 +5,7 @@
  * le code du projet (prompt système, utilitaires…) et déclarer des fonctions (vérifications,
  * corps de requête…). Aucune dépendance au bench n'est nécessaire dans le projet testé.
  */
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { tr } from "./i18n.js";
@@ -46,6 +46,8 @@ export interface FieldDef {
   label: string;
   kind: FieldKind;
   options?: string[];
+  /** Libellés affichés pour les options d'un select (valeur → libellé) ; la valeur est enregistrée. */
+  optionLabels?: Record<string, string>;
   placeholder?: string;
   /** tuples : clés de chaque élément, saisi "a+b, c+d" (ex. ["adult", "child"]). */
   keys?: string[];
@@ -65,6 +67,8 @@ export interface CheckSubject {
   /** Bench serveur : code HTTP et type de réponse. */
   status?: number;
   kind?: string;
+  /** Message utilisateur envoyé (dates résolues), ex. pour comparer la langue de la réponse. */
+  message?: string;
 }
 
 export interface CheckHelpers {
@@ -81,7 +85,8 @@ export interface CheckType {
   description: string;
   fields?: FieldDef[];
   label: (check: CheckDef) => string;
-  test: (subject: CheckSubject, check: CheckDef, h: CheckHelpers) => boolean;
+  /** Réussite, ou { pass, detail } : le détail (ex. langues détectées) s'ajoute au libellé du résultat. */
+  test: (subject: CheckSubject, check: CheckDef, h: CheckHelpers) => boolean | { pass: boolean; detail?: string };
   /** Vérification préalable : si elle échoue, les suivantes ne sont pas évaluées. */
   gate?: boolean;
 }
@@ -284,7 +289,9 @@ export function config(): LoadedConfig {
 export async function loadConfig(file: string): Promise<LoadedConfig> {
   const path = resolve(file);
   if (!existsSync(path)) throw new Error(tr("configuration introuvable : {path}", { path }));
-  const mod = await import(pathToFileURL(path).href);
+  // Paramètre de version : un nouvel import après modification du fichier (le cache des modules l'ignorerait sinon).
+  const mtime = statSync(path).mtimeMs;
+  const mod = await import(`${pathToFileURL(path).href}?v=${mtime}`);
   const raw = (mod.default ?? mod.config) as BenchConfig | undefined;
   if (!raw || typeof raw !== "object") throw new Error(tr("{path} : export par défaut attendu (objet de configuration)", { path }));
   if (!raw.providers || !Object.keys(raw.providers).length) throw new Error(tr("{path} : au moins un fournisseur dans \"providers\"", { path }));
@@ -341,7 +348,39 @@ export async function loadConfig(file: string): Promise<LoadedConfig> {
     }
   }
   current = cfg;
+  loadedMtime = mtime;
   return cfg;
+}
+
+let loadedMtime = 0;
+let reloading: Promise<unknown> | null = null;
+
+/**
+ * Recharge la configuration si son fichier a changé depuis le chargement (édition à la main, `init
+ * --force`, autre outil) : une campagne lancée ensuite utilise la nouvelle version sans redémarrer
+ * llm-bench. En cas d'erreur dans le fichier, l'ancienne configuration reste active.
+ */
+export async function reloadConfigIfChanged(): Promise<boolean> {
+  if (!current) return false;
+  let mtime = 0;
+  try {
+    mtime = statSync(current.file).mtimeMs;
+  } catch {
+    return false;
+  }
+  if (mtime === loadedMtime) return false;
+  if (!reloading) {
+    const file = current.file;
+    reloading = loadConfig(file)
+      .then(() => console.log(tr("Configuration rechargée : {file}", { file })))
+      .catch((error) => {
+        loadedMtime = mtime; // ne pas réessayer en boucle tant que le fichier n'a pas encore changé
+        console.error(tr("Configuration modifiée mais illisible, l'ancienne reste active : {error}", { error: error instanceof Error ? error.message : String(error) }));
+      })
+      .finally(() => { reloading = null; });
+  }
+  await reloading;
+  return true;
 }
 
 /** Noms de variables valides et distincts ; apiKey peut être vide. */

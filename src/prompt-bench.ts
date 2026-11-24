@@ -175,7 +175,7 @@ export async function runCase(system: string, key: string, c: PromptCase, run: n
         failures: [tr("JSON absent ou invalide")],
       };
     }
-    const checks = runChecks(types, checkDefs, { json, text: r.text, latencyMs });
+    const checks = runChecks(types, checkDefs, { json, text: r.text, latencyMs, message: resolveDates(c.message) });
     const failures = checks.filter((k) => k.pass === false).map((k) => k.label);
     return { ...base, ...metrics, status: failures.length ? "fail" : "pass", jsonValid: true, parsed: json ?? undefined, checks, failures };
   } catch (error) {
@@ -289,6 +289,40 @@ export function listReports() {
       }
     })
     .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+/**
+ * Classement des modèles sur toutes les campagnes du bench prompt : réussite, JSON valide, latence et
+ * débit médians, coût moyen par appel, date du dernier test. Sert à la page Modèles et aux estimations.
+ */
+export function modelLeaderboard() {
+  if (!existsSync(resultsDir())) return [];
+  const by = new Map<string, RunResult[]>();
+  for (const f of readdirSync(resultsDir()).filter((f) => f.endsWith(".json"))) {
+    try {
+      const r = loadReport(f.replace(/\.json$/, ""));
+      for (const x of r.results ?? []) by.set(x.model, [...(by.get(x.model) ?? []), x]);
+    } catch {
+      // rapport illisible : ignoré
+    }
+  }
+  return [...by.entries()].map(([model, rs]) => {
+    const ok = rs.filter((r) => !r.error);
+    const costs = ok.map((r) => (r.cost === undefined ? costOf(r.model, r.promptTokens, r.completionTokens) : r.cost));
+    const total = sumCosts(costs);
+    return {
+      model,
+      tier: config().providers[parseModelKey(model).provider] ? tierOf(parseModelKey(model).provider) : null,
+      total: rs.length,
+      passed: rs.filter((r) => r.status === "pass").length,
+      jsonOk: rs.filter((r) => r.jsonValid).length,
+      errors: rs.filter((r) => r.status === "error").length,
+      medianLatencyMs: median(rs.map((r) => r.latencyMs).filter((v) => v != null)),
+      medianTokensPerSec: median(rs.flatMap((r) => (r.tokensPerSec ? [r.tokensPerSec] : []))),
+      costPerCall: total != null && ok.length ? total / ok.length : null,
+      lastAt: rs.reduce((a, r) => (r.at > a ? r.at : a), ""),
+    };
+  }).sort((a, b) => b.passed / b.total - a.passed / a.total);
 }
 
 /** Marque "interrompu" les rapports restés "en cours" (processus arrêté pendant une campagne). */

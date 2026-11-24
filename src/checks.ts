@@ -6,6 +6,13 @@
  */
 import { tr } from "./i18n.js";
 import type { CheckDef, CheckHelpers, CheckSubject, CheckType, FieldDef } from "./config.js";
+import { LANGUAGES, detectLanguage, proseOf, type Language } from "./lang.js";
+
+/** Nom d'une langue dans la langue de l'outil. */
+const languageName = (l: Language) => ({
+  fr: tr("Français"), en: tr("Anglais"), es: tr("Espagnol"), de: tr("Allemand"), it: tr("Italien"), pt: tr("Portugais"), nl: tr("Néerlandais"),
+  ar: tr("Arabe"), ru: tr("Russe"), zh: tr("Chinois"), ja: tr("Japonais"), ko: tr("Coréen"), he: tr("Hébreu"), el: tr("Grec"),
+})[l];
 
 // =================================================================================================
 // Dates relatives
@@ -102,6 +109,34 @@ export const COMMON_CHECKS: Record<string, CheckType> = {
     label: () => tr("texte rédigé"),
     test: (s) => s.text.trim().length > 0 && !/^[a-z]+(_[a-z]+)+$/i.test(s.text.trim()),
   },
+  language: {
+    get description() { return tr("Langue de la réponse : la même que le message envoyé, ou une langue donnée"); },
+    get fields(): FieldDef[] {
+      return [
+        {
+          name: "value", label: tr("Langue attendue"), kind: "select", options: ["message", ...LANGUAGES],
+          optionLabels: {
+            message: tr("Même langue que le message utilisateur"),
+            ...Object.fromEntries(LANGUAGES.map((l) => [l, tr("Autre langue : {name} ({code})", { name: languageName(l), code: l })])),
+          },
+        },
+        { name: "path", label: tr("Chemin du texte (JSON, facultatif)"), kind: "text", placeholder: "reply" },
+      ];
+    },
+    label: (c) => (!c.value || c.value === "message" ? tr("langue = celle du message") : tr("langue = {lang}", { lang: c.value })),
+    test: (s, c) => {
+      const text = c.path ? String(get(s.json, c.path) ?? "") : proseOf(s.text, s.json);
+      const got = detectLanguage(text).lang;
+      let expected = c.value && c.value !== "message" ? String(c.value) : null;
+      if (!expected) {
+        expected = detectLanguage(s.message ?? "").lang;
+        // Message trop court pour en déduire la langue (« ok », un nom propre) : rien à comparer.
+        if (!expected) return { pass: true, detail: tr("langue du message indéterminée, non vérifiée") };
+      }
+      if (!got) return { pass: false, detail: tr("langue de la réponse indéterminée (attendu : {expected})", { expected }) };
+      return { pass: got === expected, detail: got === expected ? got : tr("réponse en {got}, attendu {expected}", { got, expected }) };
+    },
+  },
   maxLatency: {
     get description() { return tr("Temps de réponse ≤ N secondes"); },
     get fields(): FieldDef[] { return [{ name: "seconds", label: tr("Secondes"), kind: "number", placeholder: "30" }]; },
@@ -160,13 +195,16 @@ export function runChecks(types: Record<string, CheckType>, checks: CheckDef[], 
     const label = checkLabel(types, c);
     if (blocked && !t?.gate) return { label, pass: null };
     let pass = false;
+    let detail: string | undefined;
     try {
-      pass = Boolean(t?.test(subject, c, helpers));
+      const out = t?.test(subject, c, helpers);
+      if (out && typeof out === "object") ({ pass, detail } = out);
+      else pass = Boolean(out);
     } catch {
       pass = false;
     }
     if (!pass && t?.gate) blocked = true;
-    return { label, pass };
+    return { label: detail ? `${label} (${detail})` : label, pass };
   });
 }
 

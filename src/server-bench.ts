@@ -194,7 +194,7 @@ export async function runServerCase(s: Pick<Instance, "id" | "port">, c: ServerC
       const latencyMs = Math.round(performance.now() - started);
       const kind = safe(() => (chat.kind ?? defaultKind)(status, json), defaultKind(status, json));
       const reply = safe(() => (chat.reply ?? defaultReply)(json), undefined);
-      const checks = runChecks(types, step.checks ?? [], { json, text: reply ?? (json === null ? text : ""), latencyMs, status, kind });
+      const checks = runChecks(types, step.checks ?? [], { json, text: reply ?? (json === null ? text : ""), latencyMs, status, kind, message: ctx.message });
       // Sans vérification, une étape réussit si elle n'est pas une erreur technique.
       const failed = step.checks?.length ? checks.some((k) => k.pass === false) : kind === "error";
       if (json !== null && chat.remember) safe(() => chat.remember!(json, memory), undefined);

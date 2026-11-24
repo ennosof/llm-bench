@@ -474,9 +474,17 @@ In date checks: `J+1` or a fixed date `2026-12-24`.
 | `textMatches` | both | The text matches a regular expression |
 | `prose` | both | Written text: not empty and not a code (e.g. `empty_results`) |
 | `maxLatency` | both | Response time ≤ N seconds |
+| `language` | both | Response language: the same as the user message (`message`, default) or a given language (`fr`, `en`, `es`…). Optional JSON path of the text to analyze (e.g. `reply`) |
 | `kind` | server | Response type (`chat.kind`) |
 | `notError` | server | Neither an HTTP error nor a technical error |
 | `status` | server | HTTP code |
+
+About `language`: detection needs no external service. Supported: French, English, Spanish, German,
+Italian, Portuguese, Dutch (common words), Arabic, Russian, Chinese, Japanese, Korean, Hebrew, Greek
+(script). For a JSON response without a path, only its written sentences are analyzed (keys and codes
+such as `no_results` are ignored). The result shows the detected languages, e.g.
+`language = message language (response in fr, expected en)`. A message too short to tell its
+language (`ok`, a proper noun) is not checked.
 
 In the server bench, a step **without checks** passes if it is not a technical error.
 
