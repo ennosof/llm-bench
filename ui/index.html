@@ -105,6 +105,9 @@
   button.danger { color: var(--bad); }
   button:disabled { opacity: .5; cursor: not-allowed; }
   button.link { border: 0; background: none; color: var(--accent); padding: 0; cursor: pointer; }
+  /* Titre d'un cas qui ouvre son éditeur (rapports). */
+  button.case-link { border: 0; background: none; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+  button.case-link:hover { color: var(--accent); text-decoration: underline; }
   /* Retour à une liste : bouton contouré avec flèche, bien visible au-dessus du titre. */
   button.back { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 10px; margin-bottom: 4px;
     border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text);
@@ -259,6 +262,28 @@
   .lang-switch button.on { color: #fff; cursor: default; }
   .lang-switch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .seg button:disabled { opacity: .45; cursor: not-allowed; }
+  /* Configuration → vérifications spécifiques : constructeur guidé. */
+  .cc-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); gap: 16px; align-items: start; }
+  @media (max-width: 980px) { .cc-grid { grid-template-columns: 1fr; } }
+  .cc-step { display: grid; gap: 8px; padding: 14px 0; border-top: 1px solid var(--border); }
+  .cc-step:first-of-type { border-top: 0; padding-top: 0; }
+  .cc-step > h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; color: var(--text); text-transform: none; letter-spacing: 0; }
+  .cc-step > h3 .n { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; }
+  .cc-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+  .cc-choice { text-align: left; border: 1px solid var(--border); background: var(--surface); border-radius: 8px; padding: 10px 12px; cursor: pointer; display: grid; gap: 2px; }
+  .cc-choice .muted { font-size: 12px; }
+  .cc-choice.on { border-color: var(--accent); background: var(--accent-soft); }
+  .cc-choice:disabled { opacity: .5; cursor: not-allowed; }
+  .cc-paths { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cc-paths button { border: 1px solid var(--border); background: var(--surface-2); border-radius: 999px; padding: 2px 10px; cursor: pointer; font-size: 12px; }
+  .cc-paths button.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .cc-paths button .muted { margin-left: 4px; }
+  .cc-side { position: sticky; top: 12px; display: grid; gap: 12px; }
+  .cc-sentence { font-size: 15px; line-height: 1.5; }
+  .cc-result { border-radius: 8px; padding: 10px 12px; font-weight: 600; }
+  .cc-result.pass { background: var(--ok-soft); color: var(--ok); }
+  .cc-result.fail { background: var(--warn-soft); color: var(--warn); }
+  .cc-result.none { background: var(--surface-2); color: var(--muted); font-weight: 400; }
   .ph-running { background: var(--ok-soft); color: var(--ok); }
   .ph-failed { background: var(--bad-soft); color: var(--bad); }
   .ph-stopped { background: var(--surface-2); color: var(--muted); }
@@ -406,6 +431,107 @@
 // Clés manquantes : npm run i18n:check.
 // i18n:start
 const UI_EN = {
+  "Configuration": "Configuration",
+  "des cas de test": "of test cases",
+  "Vérifications spécifiques": "Custom checks",
+  "Un champ de la réponse JSON": "A field of the JSON response",
+  "ex. intent, data.city": "e.g. intent, data.city",
+  "Le texte de la réponse": "The response text",
+  "le message en entier": "the whole message",
+  "Le nombre d'éléments d'une liste": "The number of items in a list",
+  "ex. data.books": "e.g. data.books",
+  "au moins": "at least",
+  "au plus": "at most",
+  "exactement": "exactly",
+  "est égal à": "equals",
+  "est différent de": "is different from",
+  "contient": "contains",
+  "ne contient pas": "does not contain",
+  "contient au moins un des mots": "contains at least one of the words",
+  "ne contient aucun des mots": "contains none of the words",
+  "vaut l'une des valeurs": "is one of the values",
+  "est présent": "is present",
+  "est absent ou vide": "is missing or empty",
+  "est supérieur ou égal à": "is greater than or equal to",
+  "est inférieur ou égal à": "is less than or equal to",
+  "le texte de la réponse": "the response text",
+  "le nombre d'éléments de {path}": "the number of items in {path}",
+  "le champ {path}": "the field {path}",
+  "choisis dans chaque cas": "chosen in each case",
+  "la valeur choisie dans chaque cas": "the value chosen in each case",
+  "parmi {list}": "among {list}",
+  "Réussit si {what} {op} {value}.": "Passes if {what} {op} {value}.",
+  "liste de {n}": "list of {n}",
+  "Aucune liste dans l'exemple.": "No list in the example.",
+  "L'exemple n'est pas du JSON lisible.": "The example is not readable JSON.",
+  "Astuce : colle un exemple de réponse à l'étape 2 pour choisir le champ en un clic.": "Tip: paste an example response in step 2 to pick the field in one click.",
+  "Colle un exemple de réponse (étape 2) pour tester la règle.": "Paste an example response (step 2) to test the rule.",
+  "Indique une valeur de test (étape 4) pour tester la règle.": "Enter a test value (step 4) to test the rule.",
+  "Réussie sur l'exemple": "Passes on the example",
+  "Échouée sur l'exemple": "Fails on the example",
+  "exemple non JSON : seul le texte est lu": "example is not JSON: only the text is read",
+  "Code ajouté à la config": "Code added to the config",
+  "Règle écrite en code dans la config.": "Rule written as code in the config.",
+  "Des règles propres au projet, ajoutées à la liste des vérifications de l'éditeur de cas. Pas de code ni d'expression régulière : on choisit ce qu'on regarde dans la réponse, la condition et la valeur attendue. La règle est écrite dans {file}.": "Project-specific rules, added to the list of checks in the case editor. No code and no regular expressions: choose what to look at in the response, the condition and the expected value. The rule is written to {file}.",
+  "Nouvelle vérification": "New check",
+  "Ni section « prompt » ni section « server » dans la config : rien à vérifier.": "No “prompt” or “server” section in the config: nothing to check.",
+  "{n} vérification(s) spécifique(s)": "{n} custom check(s)",
+  "Règle": "Rule",
+  "Utilisée par": "Used by",
+  "Origine": "Origin",
+  "{n} cas": "{n} case(s)",
+  "créée ici": "created here",
+  "Modifiable uniquement dans le fichier de config": "Can only be edited in the config file",
+  "écrite à la main": "hand-written",
+  "Aucune vérification spécifique : les vérifications intégrées sont disponibles.": "No custom checks: the built-in checks are available.",
+  "Vérifications intégrées, toujours disponibles ({n})": "Built-in checks, always available ({n})",
+  "Retour à la liste": "Back to the list",
+  "Modifier « {name} »": "Edit “{name}”",
+  "Nouvelle vérification spécifique": "New custom check",
+  "Nom et banc": "Name and bench",
+  "réponse du modèle": "model response",
+  "réponse du serveur": "server response",
+  "Nom affiché dans l'éditeur de cas": "Name shown in the case editor",
+  "ex. Ville attendue": "e.g. Expected city",
+  "Identifiant (dans la config)": "Identifier (in the config)",
+  "Exemple de réponse": "Example response",
+  "(facultatif, recommandé)": "(optional, recommended)",
+  "Colle une réponse réelle (JSON ou texte), par exemple depuis le détail d'un résultat de rapport. Elle sert à choisir le champ en un clic et à tester la règle ; elle n'est pas enregistrée.": "Paste a real response (JSON or text), for example from a report result's details. It is used to pick the field in one click and to test the rule; it is not saved.",
+  "Ce qu'on regarde dans la réponse": "What to look at in the response",
+  "Bench serveur : le message rédigé renvoyé par le serveur.": "Server bench: the written message returned by the server.",
+  "La réponse brute du modèle.": "The raw model response.",
+  "Chemin de la liste": "Path of the list",
+  "Chemin du champ": "Path of the field",
+  "Noms des champs séparés par des points ; un numéro pour un élément de liste (0 = le premier).": "Field names separated by dots; a number for a list item (0 = the first).",
+  "Condition": "Condition",
+  "Le texte…": "The text…",
+  "Le nombre d'éléments est…": "The number of items is…",
+  "Le champ…": "The field…",
+  "Choisie dans chaque cas": "Chosen in each case",
+  "un champ à remplir dans l'éditeur de cas": "a field to fill in the case editor",
+  "La même pour tous les cas": "The same for all cases",
+  "fixée ici, rien à remplir dans les cas": "set here, nothing to fill in the cases",
+  "Valeurs attendues (séparées par des virgules)": "Expected values (comma-separated)",
+  "Valeur attendue": "Expected value",
+  "Libellé du champ dans l'éditeur de cas": "Field label in the case editor",
+  "Valeurs (séparées par des virgules)": "Values (comma-separated)",
+  "Nombre": "Number",
+  "Saisie": "Input",
+  "Texte libre": "Free text",
+  "Liste de choix": "List of choices",
+  "Choix proposés (séparés par des virgules)": "Offered choices (comma-separated)",
+  "Valeur pour tester sur l'exemple": "Value to test on the example",
+  "Sans tenir compte des majuscules ; chaque valeur est cherchée telle quelle, sans expression régulière.": "Case-insensitive; each value is searched as is, without regular expressions.",
+  "Sans tenir compte des majuscules ni des espaces au début et à la fin.": "Case-insensitive, ignoring leading and trailing spaces.",
+  "Option": "Option",
+  "Vérification préalable": "Prerequisite check",
+  "si elle échoue, les vérifications suivantes du cas ne sont pas évaluées (ex. la bonne intention avant les détails).": "if it fails, the case's following checks are not evaluated (e.g. the right intent before the details).",
+  "Enregistrer dans la config": "Save to the config",
+  "Écrite dans {file} ({section}), puis proposée dans la liste « Type » des vérifications de l'éditeur de cas.": "Written to {file} ({section}), then offered in the “Type” list of checks in the case editor.",
+  "Vérification « {name} » enregistrée dans la config": "Check “{name}” saved to the config",
+  "Elle est utilisée par {n} cas : ces vérifications échoueront tant qu'elles ne sont pas retirées des cas.": "It is used by {n} case(s): those checks will fail until they are removed from the cases.",
+  "Retirer la vérification « {name} » de la config ?": "Remove the check “{name}” from the config?",
+  "Vérification retirée de la config": "Check removed from the config",
   "Prompt système ({chars} caractères)": "System prompt ({chars} characters)",
   "« prompt système n° {n} · {chars} caractères : voir le dépliant ci-dessous »": "“system prompt #{n} · {chars} characters: see the section below”",
   "Prompt système n° {n} ({chars} caractères)": "System prompt #{n} ({chars} characters)",
@@ -1060,6 +1186,8 @@ const UI_EN = {
   "-copie": "-copy",
   "Supprimer le cas « {id} » ?": "Delete case “{id}”?",
   "Cas supprimé": "Case deleted",
+  "Ouvrir le cas de test": "Open the test case",
+  "Le cas « {id} » n'existe plus dans la bibliothèque": "Case “{id}” no longer exists in the library",
   "Cas enregistré": "Case saved",
   "Campagne lancée": "Campaign started",
   "Arrêt demandé : le test en cours se termine d'abord": "Stop requested: the current test finishes first",
@@ -1321,6 +1449,11 @@ const state = {
 
   // Bench serveurs MCP
   menu: store.get("menu", "llm"),
+  cfgview: store.get("cfgview", "checks"), // sous-page du menu Configuration
+  cc: null, // vérifications spécifiques : { configFile, ops, benches }
+  ccDraft: null, // vérification en cours de création / modification
+  ccPreview: null,
+  ccSaving: false,
   mtab: store.get("mtab", "servers"),
   mStatus: null,
   servers: [],
@@ -1385,8 +1518,10 @@ const MENUS = () => [
   ["models", tr("Modèles"), tr("gratuits et payants")],
   ["llm", tr("Bench prompt"), tr("appel direct du modèle")],
   state.status?.server ? ["mcp", tr("Bench serveur"), tr("chatbot de bout en bout")] : null,
+  state.status?.prompt || state.status?.server ? ["cfg", tr("Configuration"), tr("des cas de test")] : null,
   ["gw", tr("Passerelle"), tr("bascule gratuit / payant")],
 ].filter(Boolean);
+const CFG_TABS = [["checks", tr("Vérifications spécifiques")]];
 const statusChip = (s) => ({ running: `<span class="chip accent"><span class="spin"></span> ${tr("en cours")}</span>`, done: `<span class="chip ok">${tr("terminé")}</span>`, aborted: `<span class="chip warn">${tr("interrompu")}</span>` }[s] || "");
 const RESULT_ICON = { pass: "✓", fail: "✗", error: "!" };
 
@@ -1438,6 +1573,7 @@ const MENU_ICONS = {
   llm: '<path d="M4 19h16M7 15V9M12 15V5M17 15v-3"/>',
   mcp: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6"/>',
   gw: '<path d="M4 12h16M14 6l6 6-6 6"/>',
+  cfg: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
 };
 const menuIcon = (id) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${MENU_ICONS[id] || ""}</svg>`;
 
@@ -1486,6 +1622,12 @@ function render() {
     $("#view").innerHTML = viewGateway();
     return;
   }
+  if (state.menu === "cfg") {
+    renderSide(CFG_TABS.map(([id, label]) => `<button type="button" data-action="cfgview" data-tab="${id}" class="${id === state.cfgview ? "on" : ""}">${label}</button>`).join(""));
+    renderMeta();
+    setView(viewChecks());
+    return;
+  }
   if (state.menu === "models") {
     renderSide(MODEL_TABS.map(([id, label]) => `<button type="button" data-action="modview" data-tab="${id}" class="${id === state.modview ? "on" : ""}">${label}</button>`).join(""));
     renderMeta();
@@ -1515,17 +1657,28 @@ function render() {
   }
 }
 
+/** Défilement de chaque popin empilée : refermer celle du dessus rend celle du dessous telle qu'elle était. */
+const layerScroll = {};
+let layerKind = "";
+const LAYER_ORDER = ["result", "mResult", "log", "editor", "mEditor", "provider", "key", "modal"];
 function renderLayer() {
-  let html = "";
-  if (state.menu === "llm" && state.resultId && state.report) html = drawerResult();
-  if (state.menu === "mcp" && state.mResultId && state.mReport) html = drawerMResult();
-  if (state.menu === "mcp" && state.logFor) html = modalLog();
-  if (state.editing) html = modalEditor();
-  if (state.mEditing) html = modalMEditor();
-  if (state.provDraft) html = modalProvider();
-  if (state.keyDraft) html = modalKey();
-  if (state.modal) html = state.modal;
-  const scroll = $("#layer .panel")?.scrollTop ?? 0;
+  let html = "", kind = "";
+  if (state.menu === "llm" && state.resultId && state.report) { html = drawerResult(); kind = "result"; }
+  if (state.menu === "mcp" && state.mResultId && state.mReport) { html = drawerMResult(); kind = "mResult"; }
+  if (state.menu === "mcp" && state.logFor) { html = modalLog(); kind = "log"; }
+  if (state.editing) { html = modalEditor(); kind = "editor"; }
+  if (state.mEditing) { html = modalMEditor(); kind = "mEditor"; }
+  if (state.provDraft) { html = modalProvider(); kind = "provider"; }
+  if (state.keyDraft) { html = modalKey(); kind = "key"; }
+  if (state.modal) { html = state.modal; kind = "modal"; }
+  if (layerKind) layerScroll[layerKind] = $("#layer .panel")?.scrollTop ?? 0;
+  // Ordre d'empilement : une couche plus basse que la précédente signifie que celle-ci a été refermée.
+  const rank = (k) => LAYER_ORDER.indexOf(k);
+  if (!html) for (const k in layerScroll) delete layerScroll[k];
+  else if (rank(kind) < rank(layerKind)) delete layerScroll[layerKind];
+  else if (rank(kind) > rank(layerKind)) delete layerScroll[kind];
+  const scroll = layerScroll[kind] ?? 0;
+  layerKind = kind;
   $("#layer").innerHTML = html;
   const panel = $("#layer .panel");
   if (panel) panel.scrollTop = scroll;
@@ -1764,7 +1917,7 @@ function scoreBar(passed, total) {
  * cases = [{ id, text }] ; cols = [{ label, sub, results: (caseId) => [...] }].
  */
 /** Tableau cas × colonnes. `status` (filtre) : seules les cases de ce statut s'affichent, les colonnes sans aucune case retenue sont masquées. */
-function heatmap(cases, cols, openAction, status = "") {
+function heatmap(cases, cols, openAction, status = "", caseAction = "") {
   const pick = (rs) => (status ? rs.filter((x) => x.status === status) : rs);
   if (status) cols = cols.filter((col) => cases.some((c) => pick(col.results(c.id)).length));
   const cell = (all) => {
@@ -1784,7 +1937,7 @@ function heatmap(cases, cols, openAction, status = "") {
     <div class="table-wrap" style="margin-top:10px"><table class="heat-t">
       <thead><tr><th>${tr("Cas")}</th>${cols.map((c) => `<th class="hcol" title="${esc(c.label)}"><span class="mono">${esc(c.label)}</span>${c.sub ? `<div class="muted" style="font-weight:400;text-transform:none;letter-spacing:0">${c.sub}</div>` : ""}</th>`).join("")}</tr></thead>
       <tbody>${cases.map((c) => `<tr>
-        <td class="hcase"><span class="mono strong">${esc(c.id)}</span>${c.html ?? (c.text ? `<div class="muted small">${esc(c.text)}</div>` : "")}</td>
+        <td class="hcase">${caseAction ? `<button type="button" class="case-link mono strong" data-action="${caseAction}" data-id="${esc(c.id)}" title="${tr("Ouvrir le cas de test")}">${esc(c.id)}</button>` : `<span class="mono strong">${esc(c.id)}</span>`}${c.html ?? (c.text ? `<div class="muted small">${esc(c.text)}</div>` : "")}</td>
         ${cols.map((col) => `<td class="hcell">${cell(col.results(c.id))}</td>`).join("")}
       </tr>`).join("")}</tbody>
     </table></div>`;
@@ -1819,7 +1972,7 @@ function promptHeat(r) {
     ${cases.length
       ? heatmap(cases.map((c) => ({ id: c.id, html: heatCaseHtml(c.category || c.intent, c.message,
           comparable(c.id) && `<button class="link small" data-action="openDiff" data-case="${esc(c.id)}" title="${tr("Comparer les réponses des modèles sur ce cas : champs JSON qui diffèrent et diff ligne à ligne par rapport à un modèle de référence")}">⇄ ${tr("Comparer les réponses")}</button>`) })),
-        byScore.map((s) => ({ label: s.model, sub: `${tierChip(s.tier)} ${fmt.pct(s.passed, s.total)}`, results: (id) => r.results.filter((x) => x.caseId === id && x.model === s.model) })), "openResult", state.heatFilter.status)
+        byScore.map((s) => ({ label: s.model, sub: `${tierChip(s.tier)} ${fmt.pct(s.passed, s.total)}`, results: (id) => r.results.filter((x) => x.caseId === id && x.model === s.model) })), "openResult", state.heatFilter.status, "openReportCase")
       : `<p class="empty">${tr("Aucun cas ne correspond aux filtres.")}</p>`}
   </section>`;
 }
@@ -1873,7 +2026,7 @@ function serverHeat(r) {
     ${cases.length
       ? heatmap(cases.map((c) => ({ id: c.id, html: heatCaseHtml(c.category, c.steps.map((st) => st.message).join(" → "),
           serverRunsFor(r, c.id).length >= 2 && `<button class="link small" data-action="openMDiff" data-case="${esc(c.id)}" title="${tr("Comparer les réponses des serveurs sur ce cas, étape par étape : champs JSON qui diffèrent et diff du message par rapport à un serveur de référence")}">⇄ ${tr("Comparer les réponses")}</button>`) })),
-        byScore.map((s) => ({ label: s.name, sub: `${esc(s.model)} · ${fmt.pct(s.passed, s.total)}`, results: (id) => r.results.filter((x) => x.caseId === id && x.serverId === s.serverId) })), "openMResult", state.mHeatFilter.status)
+        byScore.map((s) => ({ label: s.name, sub: `${esc(s.model)} · ${fmt.pct(s.passed, s.total)}`, results: (id) => r.results.filter((x) => x.caseId === id && x.serverId === s.serverId) })), "openMResult", state.mHeatFilter.status, "openReportMCase")
       : `<p class="empty">${tr("Aucun cas ne correspond aux filtres.")}</p>`}
   </section>`;
 }
@@ -2103,7 +2256,7 @@ function drawerResult() {
   <div class="overlay center" data-action="closeLayer">
     <aside class="panel wide" data-stop>
       <div class="panel-h">
-        <div><div class="muted small mono">${esc(x.model)} · run ${x.run}</div><h2 class="mono">${esc(x.caseId)}</h2>${c?.description ? `<div class="muted small">${esc(c.description)}</div>` : ""}</div>
+        <div><div class="muted small mono">${esc(x.model)} · run ${x.run}</div><h2 class="mono"><button type="button" class="case-link" data-action="openReportCase" data-id="${esc(x.caseId)}" title="${tr("Ouvrir le cas de test")}">${esc(x.caseId)}</button></h2>${c?.description ? `<div class="muted small">${esc(c.description)}</div>` : ""}</div>
         <button class="icon" data-action="closeLayer" title="${tr("Fermer")}">✕</button>
       </div>
 
@@ -2266,6 +2419,291 @@ function readEditor() {
     o[keys.at(-1)] = v;
   });
 }
+
+// ---------------------------------------------------------------------------------------------
+// Menu Configuration : vérifications spécifiques
+// ---------------------------------------------------------------------------------------------
+async function loadCustomChecks() { state.cc = await api("/api/custom-checks"); }
+
+const CC_BENCH = () => ({ prompt: tr("Bench prompt"), server: tr("Bench serveur") });
+const CC_TARGETS = () => [
+  ["json", tr("Un champ de la réponse JSON"), tr("ex. intent, data.city")],
+  ["text", tr("Le texte de la réponse"), tr("le message en entier")],
+  ["count", tr("Le nombre d'éléments d'une liste"), tr("ex. data.books")],
+];
+/** Libellé de chaque condition, selon ce qu'on regarde. */
+const ccOpLabel = (op, target) => (target === "count"
+  ? { gte: tr("au moins"), lte: tr("au plus"), equals: tr("exactement") }[op]
+  : {
+    equals: tr("est égal à"), notEquals: tr("est différent de"), contains: tr("contient"), notContains: tr("ne contient pas"),
+    anyWord: tr("contient au moins un des mots"), noWord: tr("ne contient aucun des mots"), oneOf: tr("vaut l'une des valeurs"),
+    exists: tr("est présent"), absent: tr("est absent ou vide"), gte: tr("est supérieur ou égal à"), lte: tr("est inférieur ou égal à"),
+  }[op]);
+const CC_NO_VALUE = ["exists", "absent"];
+const CC_LISTS = ["anyWord", "noWord", "oneOf"];
+const ccNumeric = (d) => d.target === "count" || ["gte", "lte"].includes(d.op);
+
+/** "Ville attendue" → "villeAttendue" (identifiant de la vérification dans la config). */
+const ccSlug = (text) => {
+  const words = String(text || "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9]+/g, " ").trim().split(" ").filter(Boolean);
+  const id = words.map((w, i) => (i ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w.toLowerCase())).join("");
+  return /^\d/.test(id) ? "v" + id : id;
+};
+
+/** Phrase lisible de la règle : « Réussit si le champ intent est égal à … ». */
+function ccSentence(d) {
+  const b = (t) => `<b class="mono">${esc(t)}</b>`;
+  const what = d.target === "text" ? tr("le texte de la réponse") : d.target === "count" ? tr("le nombre d'éléments de {path}", { path: b(d.path || "…") }) : tr("le champ {path}", { path: b(d.path || "…") });
+  let val = "";
+  if (!CC_NO_VALUE.includes(d.op)) {
+    if (d.expected === "case") val = `<i>${CC_LISTS.includes(d.op) ? tr("choisis dans chaque cas") : tr("la valeur choisie dans chaque cas")}</i>${d.input === "select" && !CC_LISTS.includes(d.op) && !ccNumeric(d) && d.options ? ` (${tr("parmi {list}", { list: esc(d.options) })})` : ""}`;
+    else val = d.value ? `<b>« ${esc(d.value)} »</b>` : "<b>…</b>";
+  }
+  return tr("Réussit si {what} {op} {value}.", { what, op: ccOpLabel(d.op, d.target), value: val });
+}
+
+/** Chemins d'un exemple de réponse JSON, pour choisir le champ en un clic (listes : premier élément seulement). */
+function ccPaths(sample, onlyLists) {
+  let json;
+  try {
+    const t = String(sample || ""), a = t.indexOf("{"), z = t.lastIndexOf("}");
+    if (a < 0 || z <= a) return [];
+    json = JSON.parse(t.slice(a, z + 1));
+  } catch { return []; }
+  const out = [];
+  const walk = (v, path) => {
+    if (out.length >= 80 || v === null || typeof v !== "object") return;
+    const entries = Array.isArray(v) ? v.slice(0, 1).map((x, i) => [i, x]) : Object.entries(v);
+    for (const [k, x] of entries) {
+      const p = path ? `${path}.${k}` : String(k);
+      const hint = Array.isArray(x) ? tr("liste de {n}", { n: x.length }) : x !== null && typeof x === "object" ? "{…}" : JSON.stringify(x).slice(0, 24);
+      if (!onlyLists || Array.isArray(x)) out.push({ path: p, hint });
+      walk(x, p);
+    }
+  };
+  walk(json, "");
+  return out;
+}
+
+function ccPathsHtml(d) {
+  if (d.target === "text") return "";
+  const paths = ccPaths(d.sample, d.target === "count");
+  if (!paths.length) return `<span class="muted small">${d.sample ? (d.target === "count" ? tr("Aucune liste dans l'exemple.") : tr("L'exemple n'est pas du JSON lisible.")) : tr("Astuce : colle un exemple de réponse à l'étape 2 pour choisir le champ en un clic.")}</span>`;
+  return `<div class="cc-paths">${paths.map((p) => `<button type="button" class="${p.path === d.path ? "on" : ""}" data-action="ccPickPath" data-path="${esc(p.path)}"><span class="mono">${esc(p.path)}</span><span class="muted">${esc(p.hint)}</span></button>`).join("")}</div>`;
+}
+
+function ccPreviewHtml(d) {
+  const p = state.ccPreview;
+  let result;
+  if (p?.error) result = `<div class="cc-result fail">⚠ ${esc(p.error)}</div>`;
+  else if (!d.sample) result = `<div class="cc-result none">${tr("Colle un exemple de réponse (étape 2) pour tester la règle.")}</div>`;
+  else if (d.expected === "case" && !CC_NO_VALUE.includes(d.op) && d.testValue === "") result = `<div class="cc-result none">${tr("Indique une valeur de test (étape 4) pour tester la règle.")}</div>`;
+  else if (p?.result) result = `<div class="cc-result ${p.result.pass ? "pass" : "fail"}">${p.result.pass ? `✓ ${tr("Réussie sur l'exemple")}` : `✗ ${tr("Échouée sur l'exemple")}`}<div class="small" style="font-weight:400">${esc(p.result.label)}${p.result.json ? "" : ` · ${tr("exemple non JSON : seul le texte est lu")}`}</div></div>`;
+  else result = `<div class="cc-result none"><span class="spin"></span></div>`;
+  return `
+    <div class="cc-sentence">${ccSentence(d)}</div>
+    ${result}
+    ${p?.code ? `<details><summary class="small">${tr("Code ajouté à la config")}</summary><pre style="max-height:320px">${esc(p.code)}</pre></details>` : ""}`;
+}
+
+function viewChecks() {
+  if (!state.cc) return `<section class="card"><p class="empty"><span class="spin"></span> ${tr("Chargement…")}</p></section>`;
+  if (state.ccDraft) return viewCheckBuilder();
+  const file = `<span class="mono">${esc(state.cc.configFile)}</span>`;
+  const rule = (c) => (c.builder ? ccSentence({ ...c.builder, options: (c.builder.options || []).join(", ") }) : `<span class="muted">${tr("Règle écrite en code dans la config.")}</span>`);
+  return `
+  <section class="card">
+    <div class="card-h">
+      <div><h2>${tr("Vérifications spécifiques")}</h2>
+        <div class="muted small" style="max-width:760px">${tr("Des règles propres au projet, ajoutées à la liste des vérifications de l'éditeur de cas. Pas de code ni d'expression régulière : on choisit ce qu'on regarde dans la réponse, la condition et la valeur attendue. La règle est écrite dans {file}.", { file })}</div></div>
+      <button class="b primary" data-action="ccNew" ${state.cc.benches.length ? "" : "disabled"}>+ ${tr("Nouvelle vérification")}</button>
+    </div>
+    ${state.cc.benches.length ? "" : `<p class="empty">${tr("Ni section « prompt » ni section « server » dans la config : rien à vérifier.")}</p>`}
+  </section>
+  ${state.cc.benches.map((b) => `
+  <section class="card">
+    <div class="card-h"><h3>${CC_BENCH()[b.bench]}</h3><span class="muted small">${tr("{n} vérification(s) spécifique(s)", { n: b.checks.length })}</span></div>
+    ${b.checks.length ? `<div class="table-wrap"><table>
+      <thead><tr><th>${tr("Vérification")}</th><th>${tr("Règle")}</th><th class="num">${tr("Utilisée par")}</th><th>${tr("Origine")}</th><th></th></tr></thead>
+      <tbody>${b.checks.map((c) => `<tr>
+        <td><div class="strong">${c.gate ? "⛔ " : ""}${esc(c.description || c.name)}</div><div class="mono muted small">${esc(c.name)}</div></td>
+        <td class="small">${rule(c)}</td>
+        <td class="num">${c.used ? tr("{n} cas", { n: c.used }) : "–"}</td>
+        <td>${c.builder ? `<span class="chip accent">${tr("créée ici")}</span>` : `<span class="chip" title="${tr("Modifiable uniquement dans le fichier de config")}">${tr("écrite à la main")}</span>`}</td>
+        <td style="white-space:nowrap;text-align:right">${c.builder ? `<button class="b" data-action="ccEdit" data-bench="${b.bench}" data-name="${esc(c.name)}">${tr("Modifier")}</button>
+          <button class="b danger" data-action="ccDelete" data-bench="${b.bench}" data-name="${esc(c.name)}">${tr("Supprimer")}</button>` : ""}</td>
+      </tr>`).join("")}</tbody></table></div>`
+      : `<p class="empty">${tr("Aucune vérification spécifique : les vérifications intégrées sont disponibles.")}</p>`}
+    <details style="margin-top:10px"><summary class="small">${tr("Vérifications intégrées, toujours disponibles ({n})", { n: b.builtins.length })}</summary>
+      <div class="cc-paths" style="margin-top:8px">${b.builtins.map((n) => `<span class="chip mono">${esc(n)}</span>`).join("")}</div></details>
+  </section>`).join("")}`;
+}
+
+function viewCheckBuilder() {
+  const d = state.ccDraft;
+  const ops = state.cc.ops[d.target] || [];
+  const benches = state.cc.benches.map((b) => b.bench);
+  const needsValue = !CC_NO_VALUE.includes(d.op);
+  const canSelect = !CC_LISTS.includes(d.op) && !ccNumeric(d);
+  const choice = (action, v, cur, title, sub, disabled) => `<button type="button" class="cc-choice ${v === cur ? "on" : ""}" data-action="${action}" data-v="${v}" ${disabled ? "disabled" : ""}><span class="strong">${title}</span>${sub ? `<span class="muted">${sub}</span>` : ""}</button>`;
+  return `
+  <section class="card">
+    <button class="back" data-action="ccCancel" title="${tr("Raccourci : Échap")}"><span class="arrow">←</span>${tr("Retour à la liste")}</button>
+    <h2 style="margin-top:6px">${d.originalName ? tr("Modifier « {name} »", { name: esc(d.originalName) }) : tr("Nouvelle vérification spécifique")}</h2>
+  </section>
+  <div class="cc-grid">
+    <section class="card">
+      <div class="cc-step">
+        <h3><span class="n">1</span>${tr("Nom et banc")}</h3>
+        ${benches.length > 1 ? `<div class="cc-choices">${benches.map((b) => choice("ccBench", b, d.bench, CC_BENCH()[b], b === "prompt" ? tr("réponse du modèle") : tr("réponse du serveur"), !!d.originalName)).join("")}</div>` : ""}
+        <div class="row">
+          <label class="field grow">${tr("Nom affiché dans l'éditeur de cas")}<input type="text" id="ccDescription" data-action="ccInput" data-k="description" value="${esc(d.description)}" placeholder="${tr("ex. Ville attendue")}" autocomplete="off"></label>
+          <label class="field">${tr("Identifiant (dans la config)")}<input type="text" id="ccName" class="mono" data-action="ccInput" data-k="name" value="${esc(d.name)}" placeholder="villeAttendue" autocomplete="off" spellcheck="false" style="width:200px"></label>
+        </div>
+      </div>
+
+      <div class="cc-step">
+        <h3><span class="n">2</span>${tr("Exemple de réponse")} <span class="muted small" style="font-weight:400">${tr("(facultatif, recommandé)")}</span></h3>
+        <div class="muted small">${tr("Colle une réponse réelle (JSON ou texte), par exemple depuis le détail d'un résultat de rapport. Elle sert à choisir le champ en un clic et à tester la règle ; elle n'est pas enregistrée.")}</div>
+        <textarea id="ccSample" rows="5" class="mono" data-action="ccInput" data-k="sample" placeholder='{"intent": "search", "query": "victor hugo"}' spellcheck="false">${esc(d.sample)}</textarea>
+      </div>
+
+      <div class="cc-step">
+        <h3><span class="n">3</span>${tr("Ce qu'on regarde dans la réponse")}</h3>
+        <div class="cc-choices">${CC_TARGETS().map(([v, t, sub]) => choice("ccTarget", v, d.target, t, sub)).join("")}</div>
+        ${d.target === "text" ? `<div class="muted small">${d.bench === "server" ? tr("Bench serveur : le message rédigé renvoyé par le serveur.") : tr("La réponse brute du modèle.")}</div>`
+          : `<label class="field">${d.target === "count" ? tr("Chemin de la liste") : tr("Chemin du champ")}<input type="text" id="ccPath" class="mono" data-action="ccInput" data-k="path" value="${esc(d.path)}" placeholder="${d.target === "count" ? "data.books" : "intent"}" autocomplete="off" spellcheck="false"></label>
+          <div class="muted small">${tr("Noms des champs séparés par des points ; un numéro pour un élément de liste (0 = le premier).")}</div>`}
+        <div id="ccPaths">${ccPathsHtml(d)}</div>
+      </div>
+
+      <div class="cc-step">
+        <h3><span class="n">4</span>${tr("Condition")}</h3>
+        <label class="field">${d.target === "text" ? tr("Le texte…") : d.target === "count" ? tr("Le nombre d'éléments est…") : tr("Le champ…")}
+          <select data-action="ccOp">${ops.map((o) => `<option value="${o}" ${o === d.op ? "selected" : ""}>${ccOpLabel(o, d.target)}</option>`).join("")}</select></label>
+        ${needsValue ? `
+          <div class="cc-choices">
+            ${choice("ccExpected", "case", d.expected, tr("Choisie dans chaque cas"), tr("un champ à remplir dans l'éditeur de cas"))}
+            ${choice("ccExpected", "fixed", d.expected, tr("La même pour tous les cas"), tr("fixée ici, rien à remplir dans les cas"))}
+          </div>
+          ${d.expected === "fixed"
+            ? `<label class="field">${CC_LISTS.includes(d.op) ? tr("Valeurs attendues (séparées par des virgules)") : tr("Valeur attendue")}<input type="text" ${ccNumeric(d) ? 'inputmode="decimal"' : ""} id="ccValue" data-action="ccInput" data-k="value" value="${esc(d.value)}" placeholder="${CC_LISTS.includes(d.op) ? "paris, lyon" : ccNumeric(d) ? "1" : "search"}" autocomplete="off"></label>`
+            : `<div class="row">
+                <label class="field grow">${tr("Libellé du champ dans l'éditeur de cas")}<input type="text" id="ccFieldLabel" data-action="ccInput" data-k="fieldLabel" value="${esc(d.fieldLabel)}" placeholder="${CC_LISTS.includes(d.op) ? tr("Valeurs (séparées par des virgules)") : ccNumeric(d) ? tr("Nombre") : tr("Valeur attendue")}" autocomplete="off"></label>
+                ${canSelect ? `<label class="field">${tr("Saisie")}<span class="seg">${[["text", tr("Texte libre")], ["select", tr("Liste de choix")]].map(([v, l]) => `<button type="button" class="${d.input === v ? "on" : ""}" data-action="ccInputKind" data-v="${v}">${l}</button>`).join("")}</span></label>` : ""}
+              </div>
+              ${canSelect && d.input === "select" ? `<label class="field">${tr("Choix proposés (séparés par des virgules)")}<input type="text" id="ccOptions" data-action="ccInput" data-k="options" value="${esc(d.options)}" placeholder="search, order_status, other" autocomplete="off"></label>` : ""}
+              <label class="field">${tr("Valeur pour tester sur l'exemple")}<input type="text" ${ccNumeric(d) ? 'inputmode="decimal"' : ""} id="ccTestValue" data-action="ccInput" data-k="testValue" value="${esc(d.testValue)}" autocomplete="off" style="max-width:320px"></label>`}
+          ${CC_LISTS.includes(d.op) ? `<div class="muted small">${tr("Sans tenir compte des majuscules ; chaque valeur est cherchée telle quelle, sans expression régulière.")}</div>` : !ccNumeric(d) ? `<div class="muted small">${tr("Sans tenir compte des majuscules ni des espaces au début et à la fin.")}</div>` : ""}` : ""}
+      </div>
+
+      <div class="cc-step">
+        <h3><span class="n">5</span>${tr("Option")}</h3>
+        <label class="small" style="display:flex;gap:8px;align-items:start"><input type="checkbox" data-action="ccGate" ${d.gate ? "checked" : ""}>
+          <span><b>${tr("Vérification préalable")}</b> ⛔ — ${tr("si elle échoue, les vérifications suivantes du cas ne sont pas évaluées (ex. la bonne intention avant les détails).")}</span></label>
+      </div>
+    </section>
+
+    <aside class="cc-side">
+      <section class="card">
+        <div class="card-h"><h3>${tr("Aperçu")}</h3></div>
+        <div id="ccPreview" style="display:grid;gap:10px">${ccPreviewHtml(d)}</div>
+      </section>
+      <div class="btns">
+        <button class="b primary" data-action="ccSave" ${state.ccSaving ? "disabled" : ""}>${state.ccSaving ? '<span class="spin"></span> ' : ""}${tr("Enregistrer dans la config")}</button>
+        <button class="b" data-action="ccCancel">${tr("Annuler")}</button>
+      </div>
+      <div class="muted small">${tr("Écrite dans {file} ({section}), puis proposée dans la liste « Type » des vérifications de l'éditeur de cas.", { file: `<span class="mono">${esc(state.cc.configFile)}</span>`, section: `<span class="mono">${esc(d.bench)}.checks</span>` })}</div>
+    </aside>
+  </div>`;
+}
+
+/** Aperçu recalculé par le serveur (code généré, test sur l'exemple) ; seules les zones concernées sont redessinées. */
+let ccTimer = null;
+function ccRefresh(delay = 250) {
+  clearTimeout(ccTimer);
+  ccTimer = setTimeout(async () => {
+    const d = state.ccDraft;
+    if (!d) return;
+    const { bench, sample, testValue, ...spec } = d;
+    state.ccPreview = await api("/api/custom-checks/preview", { method: "POST", body: { bench, spec, sample, value: testValue } }).catch((e) => ({ error: e.message }));
+    if (state.ccDraft !== d) return;
+    const box = $("#ccPreview");
+    if (box) box.innerHTML = ccPreviewHtml(d);
+  }, delay);
+}
+const ccRender = () => { render(); ccRefresh(0); };
+
+const CC_ACTIONS = {
+  async cfgview(el) {
+    state.cfgview = el.dataset.tab; store.set("cfgview", state.cfgview);
+    render();
+    await guard(loadCustomChecks);
+    render();
+  },
+  ccNew() {
+    state.ccDraft = { bench: state.cc.benches[0].bench, name: "", nameTouched: false, description: "", target: "json", path: "", op: "equals", expected: "case",
+      value: "", input: "text", options: "", fieldLabel: "", gate: false, sample: "", testValue: "" };
+    state.ccPreview = null;
+    ccRender();
+  },
+  ccEdit(el) {
+    const c = state.cc.benches.find((b) => b.bench === el.dataset.bench)?.checks.find((x) => x.name === el.dataset.name);
+    if (!c?.builder) return;
+    state.ccDraft = { ...c.builder, options: (c.builder.options || []).join(", "), expected: c.builder.expected === "none" ? "case" : c.builder.expected,
+      bench: el.dataset.bench, name: c.name, originalName: c.name, nameTouched: true, sample: "", testValue: "" };
+    state.ccPreview = null;
+    ccRender();
+  },
+  ccCancel() { state.ccDraft = null; state.ccPreview = null; render(); },
+  ccInput(el) {
+    const d = state.ccDraft;
+    d[el.dataset.k] = el.value;
+    if (el.dataset.k === "name") d.nameTouched = el.value !== "";
+    if (el.dataset.k === "description" && !d.nameTouched) {
+      d.name = ccSlug(el.value);
+      const n = $("#ccName");
+      if (n) n.value = d.name;
+    }
+    if (el.dataset.k === "sample") { const p = $("#ccPaths"); if (p) p.innerHTML = ccPathsHtml(d); }
+    ccRefresh();
+  },
+  ccBench(el) { state.ccDraft.bench = el.dataset.v; ccRender(); },
+  ccTarget(el) {
+    const d = state.ccDraft;
+    d.target = el.dataset.v;
+    if (!state.cc.ops[d.target].includes(d.op)) d.op = state.cc.ops[d.target][0];
+    ccRender();
+  },
+  ccPickPath(el) { state.ccDraft.path = el.dataset.path; ccRender(); },
+  ccOp(el) { state.ccDraft.op = el.value; ccRender(); },
+  ccExpected(el) { state.ccDraft.expected = el.dataset.v; ccRender(); },
+  ccInputKind(el) { state.ccDraft.input = el.dataset.v; ccRender(); },
+  ccGate(el) { state.ccDraft.gate = el.checked; ccRefresh(0); },
+  async ccSave() {
+    const { bench, name, originalName, sample, testValue, nameTouched, ...spec } = state.ccDraft;
+    state.ccSaving = true; render();
+    await guard(async () => {
+      state.cc = await api("/api/custom-checks", { method: "PUT", body: { bench, name, originalName, spec } });
+      state.ccDraft = null; state.ccPreview = null;
+      await loadStatus(); // l'éditeur de cas propose la nouvelle vérification
+      toast(tr("Vérification « {name} » enregistrée dans la config", { name }));
+    });
+    state.ccSaving = false; render();
+  },
+  async ccDelete(el) {
+    const { bench, name } = el.dataset;
+    const c = state.cc.benches.find((b) => b.bench === bench)?.checks.find((x) => x.name === name);
+    const warn = c?.used ? "\n\n" + tr("Elle est utilisée par {n} cas : ces vérifications échoueront tant qu'elles ne sont pas retirées des cas.", { n: c.used }) : "";
+    if (!confirm(tr("Retirer la vérification « {name} » de la config ?", { name }) + warn)) return;
+    await guard(async () => {
+      state.cc = await api(`/api/custom-checks/${bench}/${encodeURIComponent(name)}`, { method: "DELETE" });
+      await loadStatus();
+      toast(tr("Vérification retirée de la config"));
+    });
+    render();
+  },
+};
 
 // ---------------------------------------------------------------------------------------------
 // Onglet Modèles
@@ -3237,7 +3675,7 @@ function drawerMResult() {
   <div class="overlay center" data-action="closeLayer">
     <aside class="panel wide" data-stop>
       <div class="panel-h">
-        <div><div class="muted small">${esc(s.name)} · <span class="mono">${esc(s.model)}</span> · run ${x.run}</div><h2 class="mono">${esc(x.caseId)}</h2>${c?.description ? `<div class="muted small">${esc(c.description)}</div>` : ""}</div>
+        <div><div class="muted small">${esc(s.name)} · <span class="mono">${esc(s.model)}</span> · run ${x.run}</div><h2 class="mono"><button type="button" class="case-link" data-action="openReportMCase" data-id="${esc(x.caseId)}" title="${tr("Ouvrir le cas de test")}">${esc(x.caseId)}</button></h2>${c?.description ? `<div class="muted small">${esc(c.description)}</div>` : ""}</div>
         <button class="icon" data-action="closeLayer" title="${tr("Fermer")}">✕</button>
       </div>
       <div class="banner ${x.status}"><b>${label}</b>${x.failures.length ? " — " + esc(x.failures.join(" ; ")) : ""}</div>
@@ -3537,6 +3975,7 @@ const MCP_ACTIONS = {
     render(); renderLayer();
     if (state.menu === "mcp") { await Promise.all([guard(loadServers), guard(loadMCases), loadAvail()]); await guard(loadDockLog); }
     else if (state.menu === "gw") { await Promise.all([guard(loadGateway), loadAvail()]); }
+    else if (state.menu === "cfg") { await guard(loadCustomChecks); }
     else { await Promise.all([loadModels(), loadAvail(), loadLeaderboard()]); }
     render();
     if (freeListShown() && state.status?.ollama && !state.library) actions.searchLibrary();
@@ -3872,6 +4311,11 @@ const MCP_ACTIONS = {
   mOnlyFailures(el) { state.mOnlyFailures = el.checked; render(); },
   mHeatCat(el) { state.mHeatFilter.cat = el.value === "*" ? null : el.value; render(); },
   mHeatStatus(el) { state.mHeatFilter.status = el.dataset.v; render(); },
+  openReportMCase(el) {
+    const c = state.mCases.find((x) => x.id === el.dataset.id);
+    if (!c) return toast(tr("Le cas « {id} » n'existe plus dans la bibliothèque", { id: el.dataset.id }), true);
+    actions.editMCase(el);
+  },
   openMResult(el) { state.mResultId = el.dataset.id; render(); renderLayer(); },
   async mReplay(el) { await mReplayOne(el.dataset.id); },
   async mReplayFailures() {
@@ -4107,6 +4551,12 @@ const actions = {
       <pre style="max-height:70vh">${esc(state.report.systemPrompt)}</pre></div></div>`;
     renderLayer();
   },
+  /** Cas d'un rapport ouvert dans l'éditeur, par-dessus le rapport ou le détail d'un résultat (refermer y revient). */
+  openReportCase(el) {
+    const c = state.cases.find((x) => x.id === el.dataset.id);
+    if (!c) return toast(tr("Le cas « {id} » n'existe plus dans la bibliothèque", { id: el.dataset.id }), true);
+    actions.editCase(el);
+  },
   closeModal() { state.modal = null; state.mDiffCase = null; render(); renderLayer(); },
   downloadReport() {
     const { summary, ...report } = state.report;
@@ -4197,7 +4647,7 @@ const actions = {
   },
 };
 
-Object.assign(actions, MCP_ACTIONS, GW_ACTIONS);
+Object.assign(actions, MCP_ACTIONS, GW_ACTIONS, CC_ACTIONS);
 
 async function startPull(name) {
   name = String(name || "").trim();
@@ -4361,6 +4811,7 @@ async function tick() {
   state.mSelCases ??= [];
   if (state.reportId) await loadReport(state.reportId).catch(() => { state.reportId = null; store.set("reportId", null); });
   if (state.mReportId) await loadMReport(state.mReportId).catch(() => { state.mReportId = null; store.set("mReportId", null); });
+  if (state.menu === "cfg") await guard(loadCustomChecks);
   render();
   if (freeListShown() && state.status?.ollama) actions.searchLibrary();
   if (state.menu === "llm" && (state.tab === "prompt" || !state.status?.prompt)) actions.promptOpen();

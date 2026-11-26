@@ -22,6 +22,7 @@ import {
   refreshInstance, reinstallInstance, setLlmProxyBase, startInstance, stopAllSync, stopInstance,
 } from "./instances.js";
 import { codeEnvNames, envFileNames } from "./init.js";
+import { deleteCustomCheck, listCustomChecks, previewCheck, saveCustomCheck, type Bench } from "./custom-checks.js";
 import { deleteModel, libraryTags, listLocalModels, ollamaProvider, ollamaVersion, pullModel, searchLibrary } from "./ollama.js";
 import {
   cleanCase, closeStaleReports, deleteReport, listReports, loadCases, modelLeaderboard, loadReport, promptCheckTypes, replayResult, runCampaign,
@@ -185,6 +186,35 @@ route("PUT", /^\/api\/server\/env$/, async (req) => {
     return fail(400)(error);
   }
 });
+
+// =================================================================================================
+// Vérifications spécifiques (menu Configuration)
+// =================================================================================================
+
+const benchOf = (v: unknown): Bench => {
+  if (v !== "prompt" && v !== "server") throw new HttpError(400, tr("banc inconnu : prompt ou server"));
+  return v;
+};
+
+route("GET", /^\/api\/custom-checks$/, () => listCustomChecks());
+
+route("POST", /^\/api\/custom-checks\/preview$/, async (req) => {
+  const { bench, spec, sample, value } = await readBody(req);
+  try {
+    return previewCheck(spec, benchOf(bench), sample, value);
+  } catch (error) {
+    if (error instanceof HttpError) throw error;
+    return { code: null, result: null, error: error instanceof Error ? error.message : String(error) };
+  }
+});
+
+route("PUT", /^\/api\/custom-checks$/, async (req) => {
+  const { bench, name, spec, originalName } = await readBody(req);
+  return saveCustomCheck(benchOf(bench), String(name ?? "").trim(), spec, originalName || undefined).catch(fail(400));
+});
+
+route("DELETE", /^\/api\/custom-checks\/(prompt|server)\/([\w]+)$/, (_req, _res, [bench, name]) =>
+  deleteCustomCheck(benchOf(bench), name).catch(fail(400)));
 
 /** Valeurs LLM du .env du projet ; la clé n'est jamais renvoyée, seulement sa présence. */
 route("GET", /^\/api\/providers\/project-env$/, () => {

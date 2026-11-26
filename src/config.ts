@@ -81,6 +81,24 @@ export interface CheckHelpers {
   list: (value: unknown) => string[];
 }
 
+/** Règle décrite dans l'interface (menu Configuration → Vérifications spécifiques), gardée pour la rouvrir. */
+export interface CheckSpec {
+  description: string;
+  /** Ce qu'on regarde : un champ du JSON, le texte de la réponse, ou le nombre d'éléments d'une liste du JSON. */
+  target: "json" | "text" | "count";
+  /** Chemin du champ ("data.books.0.title") ; vide pour le texte. */
+  path: string;
+  op: "equals" | "notEquals" | "contains" | "notContains" | "anyWord" | "noWord" | "oneOf" | "exists" | "absent" | "gte" | "lte";
+  gate: boolean;
+  /** Valeur attendue : écrite dans la règle, saisie dans chaque cas, ou aucune (présent / absent). */
+  expected: "fixed" | "case" | "none";
+  value: string;
+  /** Saisie dans chaque cas : texte libre ou liste de choix. */
+  input: "text" | "select";
+  options: string[];
+  fieldLabel: string;
+}
+
 export interface CheckType {
   description: string;
   fields?: FieldDef[];
@@ -89,6 +107,8 @@ export interface CheckType {
   test: (subject: CheckSubject, check: CheckDef, h: CheckHelpers) => boolean | { pass: boolean; detail?: string };
   /** Vérification préalable : si elle échoue, les suivantes ne sont pas évaluées. */
   gate?: boolean;
+  /** Créée depuis l'interface : la règle d'origine (ne pas modifier à la main, la rouvrir dans l'interface). */
+  builder?: CheckSpec;
 }
 
 export interface CheckDef {
