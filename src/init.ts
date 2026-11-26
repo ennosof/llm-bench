@@ -159,6 +159,8 @@ const win = process.platform === "win32";
 export default {
   name: ${q(`Bench · ${d.name}`)},
   currency: "$",
+  // ${tr("Port de l'interface, du proxy et de la passerelle (défaut 4317). --port ou BENCH_PORT sont prioritaires.")}
+  port: 4317,
 
   // ${tr("Fournisseurs : \"free\" ou \"paid\". Les modèles payants s'ajoutent aussi depuis l'interface (menu Modèles → Payants).")}
   providers: {

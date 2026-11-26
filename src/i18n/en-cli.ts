@@ -118,6 +118,7 @@ export const EN_CLI: Record<string, string> = {
   "(depuis la racine du projet)": "(from the project root)",
   "Les lignes « À VÉRIFIER » n'ont pas pu être déduites du projet. Les clés API sont lues dans le .env": "Lines marked \"TO CHECK\" could not be inferred from the project. API keys are read from the project's",
   "du projet : ne jamais les écrire ici. Documentation : README de llm-bench, type BenchConfig.": ".env: never write them here. Documentation: llm-bench README, BenchConfig type.",
+  "Port de l'interface, du proxy et de la passerelle (défaut 4317). --port ou BENCH_PORT sont prioritaires.": "Port of the interface, the proxy and the gateway (default 4317). --port or BENCH_PORT take precedence.",
   "Fournisseurs : \"free\" ou \"paid\". Les modèles payants s'ajoutent aussi depuis l'interface (menu Modèles → Payants).": "Providers: \"free\" or \"paid\". Paid models can also be added from the interface (Models menu → Paid).",
   "Exemples à décommenter ; un fournisseur sans clé est affiché mais inutilisable.": "Examples to uncomment; a provider without a key is shown but unusable.",
   "OpenRouter (modèles :free)": "OpenRouter (:free models)",

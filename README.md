@@ -195,7 +195,8 @@ The config is looked up, in order: `bench.config.ts`, `bench.config.mjs`, `bench
 
 ## The interface
 
-`llm-bench ui` starts on `http://localhost:4317` (port configurable). Four menus:
+`llm-bench ui` starts on `http://localhost:4317`. To change the port, set `port: 5000` in
+`bench.config.ts` before starting the tool (or `--port` / `BENCH_PORT`, which take precedence over the config). Four menus:
 
 | Menu | Tabs | Role |
 | --- | --- | --- |

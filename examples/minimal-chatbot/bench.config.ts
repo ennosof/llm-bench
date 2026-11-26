@@ -17,6 +17,8 @@ const env = process.env;
 export default defineConfig({
   name: "Bench · chatbot librairie",
   currency: "$",
+  // Port de l'interface, du proxy et de la passerelle (défaut 4317). --port ou BENCH_PORT sont prioritaires.
+  port: 4317,
 
   providers: {
     // Gratuit : modèles locaux.
