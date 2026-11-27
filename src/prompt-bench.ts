@@ -10,7 +10,7 @@ import { join } from "node:path";
 import { COMMON_CHECKS, checkLabel, dayFromToday, resolveDates, runChecks, type CheckResult } from "./checks.js";
 import { config, type CheckType, type ChatMessage, type PromptCase } from "./config.js";
 import { modelRuntimeInfo, ollamaUrlOf } from "./ollama.js";
-import { adaptBody, complete, costOf, isLocalProvider, parseModelKey, pool, provider, sumCosts, tierOf } from "./providers.js";
+import { adaptBody, complete, completeStream, costOf, isLocalProvider, parseModelKey, pool, provider, sumCosts, tierOf, type Completion } from "./providers.js";
 
 export const casesFile = () => join(config().dataDir, "prompt-cases.json");
 export const resultsDir = () => join(config().dataDir, "results");
@@ -138,35 +138,37 @@ export interface RunResult {
 
 const newId = () => Math.random().toString(36).slice(2, 10);
 
+/** Corps tel qu'envoyé (après adaptation au modèle) ; le prompt système est stocké une seule fois dans le rapport. */
+function requestRecord(key: string, body: Record<string, unknown>, messages: ChatMessage[]) {
+  const ref = parseModelKey(key);
+  return { model: key, body: { ...adaptBody(ref.provider, ref.model, { ...body, model: ref.model }), messages: [{ role: "system", content: systemPlaceholder() }, ...messages.slice(1)] } };
+}
+
+/** Mesures d'une réponse : débit, tokens attendus, contexte tronqué (Ollama), coût. */
+function metricsOf(key: string, messages: ChatMessage[], r: Completion, latencyMs: number) {
+  const tokensPerSec = r.completionTokens ? Math.round((r.completionTokens / latencyMs) * 10000) / 10 : undefined;
+  // Ollama coupe le début d'une entrée trop longue pour son contexte, sans erreur : à signaler.
+  const expectedPromptTokens = Math.round(messages.reduce((n, m) => n + String(m.content).length, 0) / 4);
+  const contextTruncated = provider(parseModelKey(key).provider).kind === "ollama" && !!r.promptTokens && r.promptTokens < expectedPromptTokens * 0.7;
+  return {
+    latencyMs, promptTokens: r.promptTokens, completionTokens: r.completionTokens, tokensPerSec, expectedPromptTokens,
+    ...(contextTruncated ? { contextTruncated } : {}),
+    cost: costOf(key, r.promptTokens, r.completionTokens), finishReason: r.finishReason, raw: r.text,
+  };
+}
+
 export async function runCase(system: string, key: string, c: PromptCase, run: number, signal?: AbortSignal): Promise<RunResult> {
   const ref = parseModelKey(key);
   const messages = buildMessages(system, c);
   const body = { ...requestParams(ref.model), messages };
   const types = promptCheckTypes();
   const checkDefs = c.checks ?? [];
-  const base = {
-    id: newId(),
-    model: key,
-    caseId: c.id,
-    run,
-    at: new Date().toISOString(),
-    // Corps tel qu'envoyé (après adaptation au modèle) ; le prompt système est stocké une seule fois dans le rapport.
-    request: { model: key, body: { ...adaptBody(ref.provider, ref.model, { ...body, model: ref.model }), messages: [{ role: "system", content: systemPlaceholder() }, ...messages.slice(1)] } },
-  };
+  const base = { id: newId(), model: key, caseId: c.id, run, at: new Date().toISOString(), request: requestRecord(key, body, messages) };
   const started = performance.now();
 
   try {
     const r = await complete(ref, body, { signal });
-    const latencyMs = Math.round(performance.now() - started);
-    const tokensPerSec = r.completionTokens ? Math.round((r.completionTokens / latencyMs) * 10000) / 10 : undefined;
-    // Ollama coupe le début d'une entrée trop longue pour son contexte, sans erreur : à signaler.
-    const expectedPromptTokens = Math.round(messages.reduce((n, m) => n + String(m.content).length, 0) / 4);
-    const contextTruncated = provider(ref.provider).kind === "ollama" && !!r.promptTokens && r.promptTokens < expectedPromptTokens * 0.7;
-    const metrics = {
-      latencyMs, promptTokens: r.promptTokens, completionTokens: r.completionTokens, tokensPerSec, expectedPromptTokens,
-      ...(contextTruncated ? { contextTruncated } : {}),
-      cost: costOf(key, r.promptTokens, r.completionTokens), finishReason: r.finishReason, raw: r.text,
-    };
+    const metrics = metricsOf(key, messages, r, Math.round(performance.now() - started));
     const { json, valid } = parse(r.text);
     if (!valid) {
       return {
@@ -175,7 +177,7 @@ export async function runCase(system: string, key: string, c: PromptCase, run: n
         failures: [tr("JSON absent ou invalide")],
       };
     }
-    const checks = runChecks(types, checkDefs, { json, text: r.text, latencyMs, message: resolveDates(c.message) });
+    const checks = runChecks(types, checkDefs, { json, text: r.text, latencyMs: metrics.latencyMs, message: resolveDates(c.message) });
     const failures = checks.filter((k) => k.pass === false).map((k) => k.label);
     return { ...base, ...metrics, status: failures.length ? "fail" : "pass", jsonValid: true, parsed: json ?? undefined, checks, failures };
   } catch (error) {
@@ -189,6 +191,51 @@ export async function runCase(system: string, key: string, c: PromptCase, run: n
       error: String(error),
     };
   }
+}
+
+// =================================================================================================
+// Chat : message libre, réponse en streaming, sans vérification
+// =================================================================================================
+
+/** Réponse d'un message du chat : mêmes détails qu'un résultat de campagne, sans vérification. */
+export type ChatPromptResult = Omit<RunResult, "caseId" | "run" | "status" | "checks" | "failures" | "previous"> & {
+  status: "done" | "error";
+  /** Délai avant le premier token. */
+  ttftMs?: number;
+};
+
+export type ChatPromptEvent =
+  | { type: "request"; target: string; request: RunResult["request"]; systemPrompt: string; promptVersion?: string }
+  | { type: "delta"; target: string; text: string }
+  | { type: "response"; target: string; result: ChatPromptResult };
+
+/** Envoie un message au modèle avec le prompt système du projet, comme un cas de test (historique compris). */
+export async function chatPrompt(
+  opts: { model: string; message: string; history: Array<{ role: "user" | "assistant"; content: string }> },
+  onEvent: (e: ChatPromptEvent) => void,
+  signal?: AbortSignal,
+) {
+  const key = opts.model;
+  const ref = parseModelKey(key);
+  const system = await systemPrompt();
+  const messages = buildMessages(system, { id: "chat", message: opts.message, history: opts.history });
+  const body = { ...requestParams(ref.model), messages };
+  const base = { id: newId(), model: key, at: new Date().toISOString(), request: requestRecord(key, { ...body, stream: true, stream_options: { include_usage: true } }, messages) };
+  onEvent({ type: "request", target: key, request: base.request, systemPrompt: system, promptVersion: await resolveVersion(promptConfig(), system).catch(() => undefined) });
+  const started = performance.now();
+
+  let result: ChatPromptResult;
+  try {
+    const r = await completeStream(ref, body, { signal, onDelta: (text) => onEvent({ type: "delta", target: key, text }) });
+    const metrics = metricsOf(key, messages, r, Math.round(performance.now() - started));
+    const { json, valid } = parse(r.text);
+    result = { ...base, ...metrics, ttftMs: r.ttftMs, status: "done", jsonValid: valid, ...(json != null ? { parsed: json } : {}) };
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    result = { ...base, status: "error", jsonValid: false, latencyMs: Math.round(performance.now() - started), error: String(error) };
+  }
+  onEvent({ type: "response", target: key, result });
+  return result;
 }
 
 // =================================================================================================

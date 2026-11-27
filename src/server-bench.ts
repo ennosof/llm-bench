@@ -6,10 +6,10 @@
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { takeCalls, takePrompts, type LlmCall } from "./capture.js";
+import { peekPrompts, takeCalls, takePrompts, watchCalls, type LlmCall } from "./capture.js";
 import { COMMON_CHECKS, resolveDates, runChecks, serverBuiltinChecks, type CheckResult } from "./checks.js";
 import { tr } from "./i18n.js";
-import { config, type CheckType, type ServerCase, type StepContext } from "./config.js";
+import { config, type CheckType, type ServerCase, type ServerStep, type StepContext } from "./config.js";
 import { getInstance, type Instance } from "./instances.js";
 import { costOf, isLocalProvider, pool, sumCosts, tierOf } from "./providers.js";
 
@@ -143,18 +143,23 @@ function defaultReply(json: any) {
   return typeof v === "string" ? v : undefined;
 }
 
-/** Réponse enregistrée dans le rapport : redactResponse, sinon tronquée au-delà de 50 ko. */
-function storedResponse(json: any, text: string) {
+/**
+ * Réponse gardée pour l'affichage : redactResponse, sinon tronquée au-delà de 50 ko pour les rapports écrits
+ * sur disque (`full` : chat, rien n'est écrit, la réponse reste entière).
+ */
+function storedResponse(json: any, text: string, full = false) {
   const chat = target().chat ?? {};
-  if (json === null) return text.slice(0, 2000);
+  if (json === null) return full ? text : text.slice(0, 2000);
   if (chat.redactResponse) return safe(() => chat.redactResponse!(json), json);
+  if (full) return json;
   const s = JSON.stringify(json);
   return s.length > 50_000 ? `${s.slice(0, 50_000)}… ${tr("(tronqué)")}` : json;
 }
 
-async function send(port: number, ctx: StepContext, signal?: AbortSignal) {
+async function send(port: number, ctx: StepContext, signal?: AbortSignal, onBody?: (body: unknown) => void) {
   const chat = target().chat ?? {};
   const body = chat.body ? chat.body(ctx) : { message: ctx.message, sessionId: ctx.sessionId };
+  onBody?.(body);
   const headers = { "Content-Type": "application/json", ...(chat.headers?.(ctx) ?? {}) };
   const method = chat.method ?? "POST";
   const timeout = AbortSignal.timeout(chat.timeoutMs ?? 240_000);
@@ -174,8 +179,56 @@ async function send(port: number, ctx: StepContext, signal?: AbortSignal) {
   return { body, status: res.status, json, text };
 }
 
-export async function runServerCase(s: Pick<Instance, "id" | "port">, c: ServerCase, run: number, signal?: AbortSignal): Promise<ServerResult> {
+/**
+ * Joue une étape : requête au serveur, lecture de la réponse, appels LLM capturés, mémoire mise à jour.
+ * Sans vérification : l'étape est "error" sur erreur technique, "fail" si la réponse est de type erreur.
+ * `fatal` : exception (timeout, connexion…), la suite de la conversation n'a plus de sens.
+ */
+export async function playStep(
+  s: Pick<Instance, "id" | "port">,
+  ctx: StepContext,
+  opts: { signal?: AbortSignal; onRequest?: (request: unknown) => void; fullResponse?: boolean } = {},
+): Promise<{ step: StepResult; json: any; text: string; fatal: boolean }> {
   const chat = target().chat ?? {};
+  const started = performance.now();
+  let request: unknown = null;
+  try {
+    const { status, json, text } = await send(s.port, ctx, opts.signal, (b) => {
+      request = chat.redactRequest ? safe(() => chat.redactRequest!(b, ctx), b) : b;
+      opts.onRequest?.(request);
+    });
+    const latencyMs = Math.round(performance.now() - started);
+    const kind = safe(() => (chat.kind ?? defaultKind)(status, json), defaultKind(status, json));
+    const reply = safe(() => (chat.reply ?? defaultReply)(json), undefined);
+    if (json !== null && chat.remember) safe(() => chat.remember!(json, ctx.memory), undefined);
+    const technical = status < 200 || status >= 300 || json === null;
+    return {
+      json, text, fatal: false,
+      step: {
+        message: ctx.message,
+        status: technical ? "error" : kind === "error" ? "fail" : "pass",
+        kind,
+        latencyMs,
+        httpStatus: status,
+        reply,
+        summary: chat.summary ? safe(() => chat.summary!(json), undefined) : undefined,
+        checks: [],
+        llmCalls: takeCalls(s.id),
+        request,
+        response: storedResponse(json, text, opts.fullResponse),
+        ...(status < 200 || status >= 300 ? { error: `HTTP ${status}` } : json === null ? { error: tr("réponse non JSON") } : {}),
+      },
+    };
+  } catch (error) {
+    if (opts.signal?.aborted) throw error;
+    return {
+      json: null, text: "", fatal: true,
+      step: { message: ctx.message, status: "error", kind: "error", latencyMs: Math.round(performance.now() - started), checks: [], llmCalls: takeCalls(s.id), request, error: String(error) },
+    };
+  }
+}
+
+export async function runServerCase(s: Pick<Instance, "id" | "port">, c: ServerCase, run: number, signal?: AbortSignal): Promise<ServerResult> {
   const types = serverCheckTypes();
   const sessionId = `bench-${newId()}`; // session neuve par cas
   const memory: Record<string, any> = {};
@@ -185,42 +238,15 @@ export async function runServerCase(s: Pick<Instance, "id" | "port">, c: ServerC
 
   for (const [index, step] of c.steps.entries()) {
     const ctx: StepContext = { index, step, case: c, sessionId, memory, message: resolveDates(step.message) };
-    const started = performance.now();
-    let request: unknown = null;
-
-    try {
-      const { body, status, json, text } = await send(s.port, ctx, signal);
-      request = chat.redactRequest ? safe(() => chat.redactRequest!(body, ctx), body) : body;
-      const latencyMs = Math.round(performance.now() - started);
-      const kind = safe(() => (chat.kind ?? defaultKind)(status, json), defaultKind(status, json));
-      const reply = safe(() => (chat.reply ?? defaultReply)(json), undefined);
-      const checks = runChecks(types, step.checks ?? [], { json, text: reply ?? (json === null ? text : ""), latencyMs, status, kind, message: ctx.message });
+    const { step: st, json, text, fatal } = await playStep(s, ctx, { signal });
+    if (!fatal) {
+      st.checks = runChecks(types, step.checks ?? [], { json, text: st.reply ?? (json === null ? text : ""), latencyMs: st.latencyMs, status: st.httpStatus, kind: st.kind, message: ctx.message });
       // Sans vérification, une étape réussit si elle n'est pas une erreur technique.
-      const failed = step.checks?.length ? checks.some((k) => k.pass === false) : kind === "error";
-      if (json !== null && chat.remember) safe(() => chat.remember!(json, memory), undefined);
-      const technical = status < 200 || status >= 300 || json === null;
-      steps.push({
-        message: ctx.message,
-        status: technical ? "error" : failed ? "fail" : "pass",
-        kind,
-        latencyMs,
-        httpStatus: status,
-        reply,
-        summary: chat.summary ? safe(() => chat.summary!(json), undefined) : undefined,
-        checks,
-        llmCalls: takeCalls(s.id),
-        request,
-        response: storedResponse(json, text),
-        ...(status < 200 || status >= 300 ? { error: `HTTP ${status}` } : json === null ? { error: tr("réponse non JSON") } : {}),
-      });
-    } catch (error) {
-      if (signal?.aborted) throw error;
-      steps.push({
-        message: ctx.message, status: "error", kind: "error", latencyMs: Math.round(performance.now() - started),
-        checks: [], llmCalls: takeCalls(s.id), request, error: String(error),
-      });
-      break; // la suite de la conversation n'a plus de sens
+      const failed = step.checks?.length ? st.checks.some((k) => k.pass === false) : st.kind === "error";
+      if (st.status !== "error") st.status = failed ? "fail" : "pass";
     }
+    steps.push(st);
+    if (fatal) break; // la suite de la conversation n'a plus de sens
   }
 
   const failures = steps.flatMap((st, i) => {
@@ -336,6 +362,22 @@ export function closeStaleServerReports() {
 }
 
 // =================================================================================================
+// Serveurs occupés
+// =================================================================================================
+
+/**
+ * Serveurs en cours d'utilisation (campagne, rejeu, chat) → raison. Les appels LLM sont capturés par serveur,
+ * pas par requête : deux échanges en même temps sur un serveur mélangeraient leurs appels.
+ */
+const busy = new Map<string, string>();
+
+function claim(s: Pick<Instance, "id" | "name">, reason: string) {
+  const current = busy.get(s.id);
+  if (current) throw new Error(tr("le serveur {name} est occupé ({reason})", { name: s.name, reason: current }));
+  busy.set(s.id, reason);
+}
+
+// =================================================================================================
 // Campagnes
 // =================================================================================================
 
@@ -353,6 +395,9 @@ export async function runServerCampaign(
   const servers = opts.serverIds.map(getInstance);
   const notRunning = servers.filter((s) => s.phase !== "running");
   if (notRunning.length) throw new Error(tr("serveur(s) arrêté(s) : {names}", { names: notRunning.map((s) => s.name).join(", ") }));
+  const taken = servers.filter((s) => busy.has(s.id));
+  if (taken.length) throw new Error(tr("serveur(s) occupé(s) : {names}", { names: taken.map((s) => `${s.name} (${busy.get(s.id)})`).join(", ") }));
+  for (const s of servers) claim(s, tr("campagne"));
 
   const report: ServerReport = {
     id: new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19),
@@ -407,6 +452,7 @@ export async function runServerCampaign(
       report.results.sort((x, y) => si(x.serverId) - si(y.serverId) || ci(x.caseId) - ci(y.caseId) || x.run - y.run);
     }
   } finally {
+    for (const s of servers) busy.delete(s.id);
     report.status = signal?.aborted ? "aborted" : "done";
     saveServerReport(report);
     onEvent({ type: "done", reportId: report.id });
@@ -426,11 +472,79 @@ export async function replayServerResult(report: ServerReport, resultId: string)
   if (current && snapshot !== -1) report.cases[snapshot] = current;
   const s = getInstance(old.serverId);
   if (s.phase !== "running") throw new Error(tr("le serveur {name} est arrêté", { name: s.name }));
-  const fresh = await runServerCase(s, c, old.run);
+  claim(s, tr("rejeu"));
+  let fresh: ServerResult;
+  try {
+    fresh = await runServerCase(s, c, old.run);
+  } finally {
+    busy.delete(s.id);
+  }
   fresh.id = old.id;
   report.prompts = { ...report.prompts, ...fresh.prompts };
   delete fresh.prompts;
   report.results[index] = fresh;
   saveServerReport(report);
   return fresh;
+}
+
+// =================================================================================================
+// Chat : messages libres envoyés au serveur, sans vérification
+// =================================================================================================
+
+/** Conversation du chat : une session du serveur testé, comme un cas dont les étapes s'ajoutent au fil des messages. */
+interface ServerChat {
+  id: string;
+  serverId: string;
+  sessionId: string;
+  memory: Record<string, any>;
+  case: ServerCase;
+}
+
+const chats = new Map<string, ServerChat>();
+const MAX_CHATS = 50;
+
+export type ChatServerEvent =
+  | { type: "request"; target: string; chatId: string; index: number; request: unknown }
+  | { type: "llm-call"; target: string; call: LlmCall; prompts: Record<string, string> }
+  | { type: "response"; target: string; chatId: string; step: StepResult; prompts: Record<string, string> };
+
+/**
+ * Envoie un message au serveur dans la conversation `chatId` (nouvelle si absente ou inconnue) : même requête
+ * qu'une étape de cas (session, mémoire, options d'étape, champs du cas). Les appels LLM du serveur sont
+ * transmis au fil de l'eau. Vérifie le serveur avant de commencer : une erreur ici précède tout événement.
+ */
+export function chatServer(opts: { chatId?: string; serverId: string; message: string; options?: Record<string, unknown>; fields?: Record<string, unknown> }) {
+  const s = getInstance(opts.serverId);
+  if (s.phase !== "running") throw new Error(tr("le serveur {name} est arrêté", { name: s.name }));
+  if (!opts.message.trim()) throw new Error(tr("message vide"));
+  let chat = opts.chatId ? chats.get(opts.chatId) : undefined;
+  if (!chat || chat.serverId !== s.id) {
+    const t = target();
+    const fields = Object.fromEntries((t.caseFields ?? []).flatMap((f) => (isEmpty(opts.fields?.[f.name]) ? [] : [[f.name, opts.fields![f.name]]])));
+    chat = { id: `chat-${newId()}`, serverId: s.id, sessionId: `bench-${newId()}`, memory: {}, case: { id: "chat", ...fields, steps: [] } };
+    chats.set(chat.id, chat);
+    if (chats.size > MAX_CHATS) chats.delete(chats.keys().next().value!);
+  }
+  const options = Object.fromEntries((target().stepOptions ?? []).flatMap((o) => (isEmpty(opts.options?.[o.name]) || (o.notFirst && !chat!.case.steps.length) ? [] : [[o.name, opts.options![o.name]]])));
+  claim(s, tr("chat"));
+  const current = chat;
+
+  return async (onEvent: (e: ChatServerEvent) => void, signal?: AbortSignal) => {
+    const step: ServerStep = { message: opts.message, ...options };
+    const index = current.case.steps.length;
+    const ctx: StepContext = { index, step, case: { ...current.case, steps: [...current.case.steps, step] }, sessionId: current.sessionId, memory: current.memory, message: resolveDates(step.message) };
+    takeCalls(s.id);
+    takePrompts(s.id);
+    const unwatch = watchCalls(s.id, (call) => onEvent({ type: "llm-call", target: s.id, call, prompts: peekPrompts(s.id) }));
+    try {
+      const { step: result, fatal } = await playStep(s, ctx, { signal, fullResponse: true, onRequest: (request) => onEvent({ type: "request", target: s.id, chatId: current.id, index, request }) });
+      // Étape en erreur technique : pas gardée dans la conversation, le message suivant reprend au même point.
+      if (!fatal) current.case.steps.push(step);
+      onEvent({ type: "response", target: s.id, chatId: current.id, step: result, prompts: takePrompts(s.id) });
+      return result;
+    } finally {
+      unwatch();
+      busy.delete(s.id);
+    }
+  };
 }

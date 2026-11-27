@@ -128,7 +128,21 @@ function record(channel: string, ref: ModelRef, raw: { path: string; status: num
   });
   if (list.length > MAX_CALLS) list.splice(0, list.length - MAX_CALLS);
   calls.set(channel, list);
-  return list[list.length - 1];
+  const call = list[list.length - 1];
+  for (const cb of watchers.get(channel) ?? []) {
+    try { cb(call); } catch { /* abonné en erreur : ignoré */ }
+  }
+  return call;
+}
+
+const watchers = new Map<string, Set<(call: LlmCall) => void>>();
+
+/** Prévient `cb` de chaque appel enregistré sur le canal (chat : appels affichés en direct). Renvoie le désabonnement. */
+export function watchCalls(channel: string, cb: (call: LlmCall) => void) {
+  const set = watchers.get(channel) ?? new Set();
+  set.add(cb);
+  watchers.set(channel, set);
+  return () => { set.delete(cb); };
 }
 
 /** Vide les appels enregistrés d'un canal et les renvoie. */

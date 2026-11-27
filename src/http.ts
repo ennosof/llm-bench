@@ -25,13 +25,13 @@ import { codeEnvNames, envFileNames } from "./init.js";
 import { deleteCustomCheck, listCustomChecks, previewCheck, saveCustomCheck, type Bench } from "./custom-checks.js";
 import { deleteModel, libraryTags, listLocalModels, ollamaProvider, ollamaVersion, pullModel, searchLibrary } from "./ollama.js";
 import {
-  cleanCase, closeStaleReports, deleteReport, listReports, loadCases, modelLeaderboard, loadReport, promptCheckTypes, replayResult, runCampaign,
+  chatPrompt, cleanCase, closeStaleReports, deleteReport, listReports, loadCases, modelLeaderboard, loadReport, promptCheckTypes, replayResult, runCampaign,
   saveCases, summarize, systemPrompt, validateCase,
 } from "./prompt-bench.js";
 import { describeSource, detectPrompts, evalExports, projectRoot, resolveVersion, savePromptSource } from "./prompt-source.js";
 import { addUiProvider, availableModels, providersForUi, removeUiModel, removeUiProvider, setConfigProviderKey } from "./providers.js";
 import {
-  cleanServerCase, closeStaleServerReports, deleteServerReport, kinds, listServerReports, loadServerCases, loadServerReport,
+  chatServer, cleanServerCase, closeStaleServerReports, deleteServerReport, kinds, listServerReports, loadServerCases, loadServerReport,
   replayServerResult, runServerCampaign, saveServerCases, serverCheckTypes, summarizeServers, validateServerCase,
 } from "./server-bench.js";
 
@@ -62,6 +62,21 @@ async function readBody(req: IncomingMessage): Promise<any> {
   } catch {
     throw new HttpError(400, tr("JSON invalide"));
   }
+}
+
+/**
+ * Réponse en flux NDJSON (un événement JSON par ligne), lue par l'interface au fil de l'eau.
+ * `signal` est déclenché si l'interface ferme la connexion (bouton Arrêter).
+ */
+function ndjson(res: ServerResponse) {
+  const controller = new AbortController();
+  res.on("close", () => { if (!res.writableFinished) controller.abort(); });
+  res.writeHead(200, { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store", "X-Accel-Buffering": "no" });
+  return {
+    signal: controller.signal,
+    emit: (event: unknown) => { if (!res.writableEnded) res.write(JSON.stringify(event) + "\n"); },
+    end: () => res.end(),
+  };
 }
 
 type Handler = (req: IncomingMessage, res: ServerResponse, params: string[], url: URL) => Promise<unknown> | unknown;
@@ -330,6 +345,24 @@ route("DELETE", /^\/api\/cases\/([^/]+)$/, (_req, _res, [id]) => {
   return { ok: true };
 });
 
+// Chat : un message libre au modèle, réponse en streaming (NDJSON), sans vérification.
+route("POST", /^\/api\/prompt\/chat$/, async (req, res) => {
+  const { model, message, history } = await readBody(req);
+  if (!config().prompt) throw new HttpError(404, tr("pas de bench prompt : section « prompt » absente de la config"));
+  if (typeof model !== "string" || !model) throw new HttpError(400, tr("choisir un modèle"));
+  if (typeof message !== "string" || !message.trim()) throw new HttpError(400, tr("message vide"));
+  const turns = (Array.isArray(history) ? history : [])
+    .filter((h: any) => (h?.role === "user" || h?.role === "assistant") && typeof h.content === "string")
+    .map((h: any) => ({ role: h.role, content: h.content }));
+  const out = ndjson(res);
+  try {
+    await chatPrompt({ model, message, history: turns }, out.emit, out.signal);
+  } catch (error) {
+    if (!out.signal.aborted) out.emit({ type: "error", target: model, message: error instanceof Error ? error.message : String(error) });
+  }
+  out.end();
+});
+
 route("GET", /^\/api\/runs\/active$/, () => publicRun(activeRun));
 
 route("POST", /^\/api\/runs$/, async (req) => {
@@ -527,6 +560,25 @@ route("DELETE", /^\/api\/server\/cases\/([^/]+)$/, (_req, _res, [id]) => {
   return { ok: true };
 });
 
+// Chat : un message libre au serveur dans une conversation (session gardée entre les messages), sans vérification.
+route("POST", /^\/api\/server\/chat$/, async (req, res) => {
+  const { chatId, serverId, message, options, fields } = await readBody(req);
+  if (!config().server) throw new HttpError(404, tr("pas de bench serveur : section « server » absente de la config"));
+  let run;
+  try {
+    run = chatServer({ chatId: typeof chatId === "string" ? chatId : undefined, serverId: String(serverId ?? ""), message: String(message ?? ""), options, fields });
+  } catch (error) {
+    fail(409)(error);
+  }
+  const out = ndjson(res);
+  try {
+    await run!(out.emit, out.signal);
+  } catch (error) {
+    if (!out.signal.aborted) out.emit({ type: "error", target: serverId, message: error instanceof Error ? error.message : String(error) });
+  }
+  out.end();
+});
+
 route("GET", /^\/api\/server\/runs\/active$/, () => publicRun(activeServerRun));
 
 route("POST", /^\/api\/server\/runs$/, async (req) => {
@@ -657,7 +709,8 @@ export function startHttp(opts: { onListening?: (url: string) => void } = {}) {
       for (const r of routes) {
         const m = r.method === req.method ? url.pathname.match(r.pattern) : null;
         if (m) {
-          send(res, 200, (await r.handler(req, res, m.slice(1), url)) ?? null);
+          const out = await r.handler(req, res, m.slice(1), url);
+          if (!res.headersSent) send(res, 200, out ?? null); // sinon : réponse en flux, déjà envoyée
           return;
         }
       }
@@ -665,7 +718,8 @@ export function startHttp(opts: { onListening?: (url: string) => void } = {}) {
     } catch (error) {
       const status = error instanceof HttpError ? error.status : 500;
       if (status === 500) console.error(error);
-      send(res, status, { error: error instanceof Error ? error.message : String(error) });
+      if (res.headersSent) res.end();
+      else send(res, status, { error: error instanceof Error ? error.message : String(error) });
     }
   };
   // Langue de chaque requête : celle choisie dans l'interface (en-tête x-llm-bench-lang), sinon celle du système.

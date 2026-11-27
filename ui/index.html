@@ -407,6 +407,62 @@
   @media (max-width: 700px) { .route .arrow { flex-basis: 100%; padding: 6px 0; } }
   .group-h { padding: 6px 10px; font-size: 12px; font-weight: 600; color: var(--muted); background: var(--surface-2); display: flex; justify-content: space-between; gap: 8px; }
   .gw-target { font-size: 18px; font-weight: 600; }
+  /* Chat : conversation qui remplit la hauteur, saisie en bas. */
+  .chat { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 12px; height: calc(100vh - 72px); min-height: 480px; }
+  .chat-bar { align-items: flex-end; }
+  .chat-log { overflow-y: auto; display: flex; flex-direction: column; gap: 18px; padding: 16px; }
+  .chat-log .empty { margin: auto; max-width: 460px; }
+  .turn { display: flex; flex-direction: column; gap: 8px; }
+  .msg-u { align-self: flex-end; max-width: min(78%, 720px); background: var(--accent); color: var(--surface); padding: 9px 13px; border-radius: 14px 14px 4px 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .msg-opts { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px; }
+  .msg-a { align-self: flex-start; max-width: min(92%, 960px); min-width: min(320px, 100%); background: var(--surface-2); border-radius: 14px 14px 14px 4px; padding: 10px 13px; display: grid; gap: 8px; }
+  .msg-a .txt { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .msg-a .txt.json { font: 12.5px/1.5 var(--mono); }
+  .msg-a pre { background: var(--surface); max-height: 260px; }
+  .msg-meta { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 12px; color: var(--muted); }
+  .live-calls { display: grid; gap: 4px; }
+  /* Chat à plusieurs cibles : une colonne par modèle / serveur, les réponses d'un même message alignées. */
+  .chat-inner { display: flex; flex-direction: column; gap: 18px; }
+  .chat-log.multi { overflow-x: auto; }
+  .chat-log.multi .chat-inner { min-width: calc(var(--n) * 300px); }
+  .chat-cols, .replies { display: grid; grid-template-columns: repeat(var(--n, 1), minmax(0, 1fr)); gap: 10px; }
+  .chat-cols { position: sticky; top: -16px; z-index: 2; background: var(--surface); padding: 8px 0; margin-top: -8px; border-bottom: 1px solid var(--border); }
+  .chat-col { min-width: 0; display: grid; gap: 2px; }
+  .chat-col-t { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .chat-col-t > .strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chat-col-t .icon { margin-left: auto; }
+  .replies .msg-a { max-width: none; min-width: 0; align-self: start; }
+  .replies.one { display: flex; }
+  .replies.one .msg-a { max-width: min(92%, 960px); min-width: min(320px, 100%); }
+  .msg-a.none { background: none; border: 1px dashed var(--border); }
+  .picker .picker-o.chk { display: flex; align-items: center; gap: 8px; }
+  .picker .picker-o.chk input { width: auto; flex: none; margin: 0; }
+  .srv-o-t { display: grid; min-width: 0; }
+  .srv-o-t > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .caret::after { content: "▍"; margin-left: 1px; color: var(--accent); animation: caret 1s steps(1) infinite; }
+  @keyframes caret { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .caret::after { animation: none; } }
+  .chat-empty { margin: auto; max-width: 520px; width: 100%; display: grid; justify-items: center; gap: 10px; text-align: center; padding: 12px 0; }
+  .chat-empty h2 { font-size: 17px; }
+  .chat-empty p { margin: 0; }
+  .chat-empty-ico { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+  .srv-picker .picker-btn { min-height: 38px; }
+  .srv-picker .picker-btn .v { min-width: 0; }
+  .srv-btn-r { display: flex; align-items: center; gap: 8px; flex: none; }
+  .srv-picker .picker-pop { padding: 6px; }
+  .srv-o { display: flex; align-items: center; gap: 8px; padding-right: 4px; border-radius: 6px; }
+  .srv-o.on { background: var(--accent-soft); }
+  .srv-o .picker-o { flex: 1; min-width: 0; display: grid; }
+  .srv-o .picker-o > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .srv-o.on .picker-o { background: none; }
+  .srv-op { flex: none; width: 30px; height: 30px; padding: 0; display: grid; place-items: center; font-size: 11px; }
+  .chat-stopped { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .composer { display: grid; gap: 8px; }
+  /* Zone de saisie du chat : champ et bouton séparés, de même hauteur (le bouton suit le champ, même redimensionné). */
+  .composer-row { display: flex; gap: 8px; align-items: stretch; }
+  .composer textarea { flex: 1; min-height: 46px; max-height: 40vh; padding: 10px 12px; border-radius: 10px; }
+  .composer-row > .b { flex: none; min-width: 120px; padding: 0 18px; border-radius: 10px; font-weight: 600; justify-content: center; }
+  @media (max-width: 700px) { .chat { height: auto; } .chat-log { max-height: 65vh; } .msg-u, .msg-a { max-width: 100%; } }
 </style>
 </head>
 <body>
@@ -431,6 +487,31 @@
 // Clés manquantes : npm run i18n:check.
 // i18n:start
 const UI_EN = {
+  "Modèles locaux : un à la fois, pour ne pas saturer la machine": "Local models: one at a time, so as not to overload the machine",
+  "en file": "queued",
+  "Ouvre l'éditeur de cas avec la conversation de la première colonne ({name}) ; chaque colonne a aussi son lien": "Opens the case editor with the first column's conversation ({name}); each column also has its own link",
+  "Envoyer aux {n}": "Send to all {n}",
+  "non envoyé à cette cible": "not sent to this target",
+  "Retirée : ne reçoit plus les messages": "Removed: no longer receives messages",
+  "retirée": "removed",
+  "Ne plus envoyer à cette cible": "Stop sending to this target",
+  "moy. {t}": "avg {t}",
+  "→ cas de test": "→ test case",
+  "{n} modèles": "{n} models",
+  "Conversation en cours : « Nouvelle conversation » pour ajouter un modèle": "Conversation in progress: “New conversation” to add a model",
+  "Conversation en cours : on peut retirer un modèle, pas en ajouter.": "Conversation in progress: models can be removed, not added.",
+  "Cocher plusieurs modèles pour comparer leurs réponses au même message.": "Tick several models to compare their answers to the same message.",
+  "Plusieurs modèles cochés : chacun reçoit le message avec sa propre conversation, réponses côte à côte.": "With several models ticked, each receives the message with its own conversation; answers side by side.",
+  "{n} serveurs": "{n} servers",
+  "Conversation en cours : « Nouvelle conversation » pour ajouter un serveur": "Conversation in progress: “New conversation” to add a server",
+  "Conversation en cours : on peut retirer un serveur, pas en ajouter.": "Conversation in progress: servers can be removed, not added.",
+  "Cocher plusieurs serveurs pour comparer leurs réponses au même message.": "Tick several servers to compare their answers to the same message.",
+  "Aucun des serveurs choisis n'est actif": "None of the chosen servers is running",
+  "Aucun serveur choisi": "No server chosen",
+  "Cocher un ou plusieurs serveurs dans la liste.": "Tick one or more servers in the list.",
+  "Plusieurs serveurs cochés : chacun garde sa propre session, réponses côte à côte.": "With several servers ticked, each keeps its own session; answers side by side.",
+  "Serveurs non actifs : {names}. Ils ne recevront pas les messages tant qu'ils ne sont pas démarrés.": "Servers not running: {names}. They won't receive messages until they are started.",
+  "le serveur {name} est arrêté": "server {name} is stopped",
   "Configuration": "Configuration",
   "des cas de test": "of test cases",
   "Vérifications spécifiques": "Custom checks",
@@ -540,6 +621,7 @@ const UI_EN = {
   "Appelé par": "Called by",
   "Requête reçue du serveur": "Request received from the server",
   "En-têtes": "Headers",
+  "Corps": "Body",
   "Requête envoyée au fournisseur": "Request sent to the provider",
   "Réponse du fournisseur": "Provider response",
   "Pas de détail HTTP pour cet appel.": "No HTTP details for this call.",
@@ -653,12 +735,6 @@ const UI_EN = {
   "Port local · client": "Local port · client",
   "Réponse": "Response",
   "{n} octets": "{n} bytes",
-  "Requête reçue du serveur — en-têtes": "Request received from the server — headers",
-  "Requête reçue du serveur — corps": "Request received from the server — body",
-  "Requête envoyée au fournisseur — en-têtes": "Request sent to the provider — headers",
-  "Requête envoyée au fournisseur — corps": "Request sent to the provider — body",
-  "Réponse du fournisseur — en-têtes": "Provider response — headers",
-  "Réponse du fournisseur — corps": "Provider response — body",
   "{n} événements SSE": "{n} SSE events",
   "Go": "GB",
   "Lancer": "Run",
@@ -1197,6 +1273,37 @@ const UI_EN = {
   "Téléchargement de {name} lancé": "Download of {name} started",
   "Campagne terminée": "Campaign finished",
   "{name} téléchargé": "{name} downloaded",
+  // Chat
+  "Chat": "Chat",
+  "chat": "chat",
+  "Premier token": "First token",
+  "1er token": "1st token",
+  "total": "total",
+  "en attente": "waiting",
+  "Nouvelle conversation": "New conversation",
+  "Ouvre l'éditeur de cas avec cette conversation": "Opens the case editor with this conversation",
+  "Enregistrer comme cas de test": "Save as test case",
+  "Votre message… (Entrée pour envoyer, Maj+Entrée pour aller à la ligne)": "Your message… (Enter to send, Shift+Enter for a new line)",
+  "Envoyer": "Send",
+  "JSON absent ou invalide": "JSON missing or invalid",
+  "Détails": "Details",
+  "Requête envoyée, en attente du premier token…": "Request sent, waiting for the first token…",
+  "Messages libres envoyés au modèle avec le prompt système {version}, réponse en direct. Aucune vérification.": "Free messages sent to the model with system prompt {version}, live response. No checks.",
+  "Écrire un message pour commencer. Les messages précédents sont renvoyés comme historique, comme dans un cas de test.": "Write a message to start. Previous messages are sent back as history, as in a test case.",
+  "Requête envoyée au serveur, en attente de sa réponse…": "Request sent to the server, waiting for its response…",
+  "Envoi…": "Sending…",
+  "Message non gardé dans la conversation : le suivant reprend au même point.": "Message not kept in the conversation: the next one resumes from the same point.",
+  "Messages libres envoyés à {path} du serveur, dans une même session, réponse et appels LLM en direct. Aucune vérification.": "Free messages sent to the server's {path} in a single session, live response and LLM calls. No checks.",
+  "Aucun serveur": "No server",
+  "Le serveur {name} n'est pas actif": "Server {name} is not running",
+  "Le démarrer pour lui envoyer des messages, ou choisir un autre serveur dans la liste.": "Start it to send it messages, or choose another server from the list.",
+  "Le serveur {name} n'est pas actif : le démarrer pour continuer la conversation.": "Server {name} is not running: start it to continue the conversation.",
+  "Créer un serveur (une copie du projet branchée sur un modèle) pour lui envoyer des messages.": "Create a server (a copy of the project wired to a model) to send it messages.",
+  "Démarrage…": "Starting…",
+  "Gérer les serveurs": "Manage servers",
+  "Fixé pour la conversation : « Nouvelle conversation » pour le changer": "Fixed for the conversation: use “New conversation” to change it",
+  "Écrire un message pour commencer. Les messages suivants restent dans la même session du serveur, comme les étapes d'un cas.": "Write a message to start. Following messages stay in the same server session, like the steps of a case.",
+  "message {n}": "message {n}",
 };
 // i18n:end
 const LANG = (() => {
@@ -1282,6 +1389,8 @@ function enhanceSelect(sel) {
   btn.addEventListener("keydown", (e) => { if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); open(); } });
   pop.addEventListener("click", (e) => {
     const o = e.target.closest(".picker-o");
+    // Liste dans un <label> : un clic hors option (titre de groupe…) ouvrirait le <select> natif caché.
+    if (!e.target.closest("input")) e.preventDefault();
     if (!o || o.disabled) return;
     pop.hidden = true;
     btn.setAttribute("aria-expanded", "false");
@@ -1317,10 +1426,37 @@ const prettyJson = (text) => {
   if (!/^[{[]/.test(body)) return text;
   try { return JSON.stringify(JSON.parse(body), null, 2); } catch { return text; }
 };
+/**
+ * JSON illisible par JSON.parse (réponse tronquée au-delà de 50 ko dans un rapport…) : indenté et coloré
+ * jeton par jeton, jusqu'à la coupure.
+ */
+function looseJsonHtml(text) {
+  const tokens = String(text).match(/"(?:[^"\\]|\\.)*"?|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|\b(?:true|false|null)\b|[{}[\],:]|\s+|[^\s"{}[\],:]+/g) || [];
+  const sig = tokens.filter((t) => !/^\s+$/.test(t));
+  let out = "", depth = 0;
+  const nl = () => "\n" + "  ".repeat(Math.max(0, depth));
+  sig.forEach((t, i) => {
+    const next = sig[i + 1];
+    if (t === "{" || t === "[") { depth++; out += t + (next === "}" || next === "]" ? "" : nl()); }
+    else if (t === "}" || t === "]") { depth--; out += (sig[i - 1] === "{" || sig[i - 1] === "[" ? "" : nl()) + t; }
+    else if (t === ",") out += "," + nl();
+    else if (t === ":") out += ": ";
+    else if (t[0] === '"') out += `<span class="${next === ":" ? "j-k" : "j-s"}">${esc(t)}</span>`;
+    else if (/^(true|false|null)$/.test(t)) out += `<span class="j-b">${t}</span>`;
+    else if (/^-?\d/.test(t)) out += `<span class="j-n">${t}</span>`;
+    else out += " " + esc(t);
+  });
+  return out;
+}
+
 /** JSON indenté et coloré (HTML échappé). Les chaînes contenant du JSON sont dépliées. */
 const jsonHtml = (v) => {
   if (v == null || v === "") return `<span class="muted">${tr("(vide)")}</span>`;
-  if (typeof v === "string") { const p = prettyJson(v); if (p === v) return esc(v); v = JSON.parse(String(v).trim().replace(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/, "$1")); }
+  if (typeof v === "string") {
+    const p = prettyJson(v);
+    if (p === v) return /^\s*[{[]/.test(v) ? looseJsonHtml(v) : esc(v);
+    v = JSON.parse(String(v).trim().replace(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/, "$1"));
+  }
   return JSON.stringify(v, null, 2).replace(/("(?:[^"\\]|\\.)*")(\s*:)?|\b(true|false|null)\b|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|([^"\w-]+|[\w-])/g, (m, str, colon, lit, num, other) =>
     other != null ? esc(other) : str ? `<span class="${colon ? "j-k" : "j-s"}">${esc(str)}</span>${colon || ""}` : lit ? `<span class="j-b">${lit}</span>` : `<span class="j-n">${num}</span>`);
 };
@@ -1363,13 +1499,21 @@ function httpExchange(c) {
       <tr><th>${tr("Port local · client")}</th><td>${i.localPort ?? "?"} · ${esc(i.remoteAddress || "?")}:${i.remotePort ?? "?"}</td></tr>
       <tr><th>${tr("Réponse")}</th><td>HTTP ${r.status}${r.statusText ? ` ${esc(r.statusText)}` : ""} · ${tr("{n} octets", { n: r.bytes.toLocaleString(LOCALE) })} · ${fmt.s(c.latencyMs)}</td></tr>
     </table>
-    <details><summary class="small">${tr("Requête reçue du serveur — en-têtes")}</summary>${jsonPre(i.headers)}</details>
-    <details><summary class="small">${tr("Requête reçue du serveur — corps")}</summary>${requestBody(i.body)}</details>
-    <details><summary class="small">${tr("Requête envoyée au fournisseur — en-têtes")}</summary>${jsonPre(u.headers)}</details>
-    <details open><summary class="small">${tr("Requête envoyée au fournisseur — corps")}</summary>${requestBody(u.body)}</details>
-    <details><summary class="small">${tr("Réponse du fournisseur — en-têtes")}</summary>${jsonPre(r.headers)}</details>
-    <details open><summary class="small">${tr("Réponse du fournisseur — corps")}${Array.isArray(r.body) && c.stream ? ` (${tr("{n} événements SSE", { n: r.body.length })})` : ""}</summary>${jsonPre(r.body)}</details>
+    ${hxGroup("incoming", tr("Requête reçue du serveur"), jsonPre(i.headers), requestBody(i.body))}
+    ${hxGroup("upstream", tr("Requête envoyée au fournisseur"), jsonPre(u.headers), requestBody(u.body), true)}
+    ${hxGroup("reply", tr("Réponse du fournisseur"), jsonPre(r.headers), jsonPre(r.body), true, Array.isArray(r.body) && c.stream ? ` (${tr("{n} événements SSE", { n: r.body.length })})` : "")}
   </div>`;
+}
+
+/** Un échange HTTP (requête ou réponse) : en-têtes et corps sous un même titre, en deux onglets. L'onglet choisi est retenu par groupe. */
+function hxGroup(group, title, headers, body, open = false, bodyNote = "") {
+  const tab = state.hxTab[group] || "body";
+  const btn = (t, label) => `<button type="button" class="${tab === t ? "on" : ""}" data-action="hxTab" data-g="${group}" data-t="${t}" aria-pressed="${tab === t}">${label}</button>`;
+  return `<details ${open ? "open" : ""}><summary class="small">${title}</summary>
+    <div class="seg" role="group" style="margin:8px 0 6px">${btn("headers", tr("En-têtes"))}${btn("body", tr("Corps") + bodyNote)}</div>
+    <div data-pane="headers" ${tab === "headers" ? "" : "hidden"}>${headers}</div>
+    <div data-pane="body" ${tab === "body" ? "" : "hidden"}>${body}</div>
+  </details>`;
 }
 
 const store = {
@@ -1454,6 +1598,7 @@ const state = {
   ccDraft: null, // vérification en cours de création / modification
   ccPreview: null,
   ccSaving: false,
+  hxTab: {}, // onglet affiché (headers | body) de chaque échange HTTP du détail des appels LLM
   mtab: store.get("mtab", "servers"),
   mStatus: null,
   servers: [],
@@ -1496,15 +1641,20 @@ const state = {
   promptChanging: false,
   promptShowText: false,
   promptManual: { mode: "module", module: "", export: "", file: "", text: "", test: null },
+  // Chat (sous-menu des deux benchs) : messages libres, réponse en direct, sans vérification.
+  // Chat : plusieurs modèles / serveurs possibles, chacun avec sa conversation (historique, session serveur).
+  chat: { models: store.get("chatModels", store.get("chatModel", "") ? [store.get("chatModel", "")] : []), turns: [], draft: "", controller: null, systemPrompt: "", promptVersion: null },
+  mChat: { serverIds: store.get("chatServers", store.get("chatServer", "") ? [store.get("chatServer", "")] : []), chatIds: {}, turns: [], draft: "", controller: null, options: {}, fields: {}, prompts: {} },
+  chatDetail: null, // détail d'une réponse du chat : { bench: "prompt" | "server", id, key }
   envInfo: null, // noms des variables du bench serveur
   envDraft: null,
   savingEnv: false,
 };
-const LLM_TABS = [["run", tr("Lancer")], ["reports", tr("Rapports")], ["cases", tr("Cas de test")], ["prompt", tr("Prompt système")]];
+const LLM_TABS = [["run", tr("Lancer")], ["chat", tr("Chat")], ["reports", tr("Rapports")], ["cases", tr("Cas de test")], ["prompt", tr("Prompt système")]];
 const MODEL_TABS = [["stats", tr("Statistiques")], ["list", tr("Liste des modèles")]];
 /** Liste des modèles gratuits affichée (catalogue Ollama, téléchargements). */
 const freeListShown = () => state.menu === "models" && state.modview === "list" && state.modtab === "free";
-const MCP_TABS = [["servers", tr("Serveurs")], ["run", tr("Lancer")], ["reports", tr("Rapports")], ["cases", tr("Cas de test")], ["env", tr("Variables")]];
+const MCP_TABS = [["servers", tr("Serveurs")], ["run", tr("Lancer")], ["chat", tr("Chat")], ["reports", tr("Rapports")], ["cases", tr("Cas de test")], ["env", tr("Variables")]];
 
 const catChip = (c) => (c ? `<span class="chip">${esc(c)}</span>` : "");
 const tierChip = (t) => (t ? `<span class="chip t-${esc(t)}">${t === "free" ? tr("gratuit") : tr("payant")}</span>` : "");
@@ -1643,9 +1793,17 @@ function render() {
   const caret = focusId && "selectionStart" in focused ? focused.selectionStart : null;
 
   const views = mcp
-    ? { servers: viewServers, run: viewMRun, reports: viewMReports, cases: viewMCases, env: viewEnv }
-    : { run: viewRun, reports: viewReports, cases: viewCases, prompt: viewPrompt };
+    ? { servers: viewServers, run: viewMRun, chat: viewMChat, reports: viewMReports, cases: viewMCases, env: viewEnv }
+    : { run: viewRun, chat: viewChat, reports: viewReports, cases: viewCases, prompt: viewPrompt };
+  const log = $("#chatLog"), logScroll = log?.scrollTop;
+  // Listes de cibles du chat : refermées par un clic ailleurs, Échap ou un défilement (elles se cachent seules).
+  const chatPops = [["srvPop", state.mChat], ["mdlPop", state.chat]];
+  for (const [id, c] of chatPops) { const p = $("#" + id); if (p) c.pickerOpen = !p.hidden; }
   $("#view").innerHTML = (views[current] || Object.values(views)[0])();
+  for (const [id] of chatPops) { const pop = $("#" + id); if (pop && !pop.hidden) placePop($(`#${id}Btn`), pop, 360); }
+  // Conversation du chat : reste en bas tant que l'utilisateur n'est pas remonté.
+  const newLog = $("#chatLog");
+  if (newLog) newLog.scrollTop = state.chatStick !== false || logScroll == null ? newLog.scrollHeight : logScroll;
   const dock = $("#dockPre");
   if (dock && state.dockStick !== false) dock.scrollTop = dock.scrollHeight;
   // Catégories partiellement cochées : état intermédiaire de la case.
@@ -1660,11 +1818,12 @@ function render() {
 /** Défilement de chaque popin empilée : refermer celle du dessus rend celle du dessous telle qu'elle était. */
 const layerScroll = {};
 let layerKind = "";
-const LAYER_ORDER = ["result", "mResult", "log", "editor", "mEditor", "provider", "key", "modal"];
+const LAYER_ORDER = ["result", "mResult", "chatDetail", "log", "editor", "mEditor", "provider", "key", "modal"];
 function renderLayer() {
   let html = "", kind = "";
   if (state.menu === "llm" && state.resultId && state.report) { html = drawerResult(); kind = "result"; }
   if (state.menu === "mcp" && state.mResultId && state.mReport) { html = drawerMResult(); kind = "mResult"; }
+  if (state.chatDetail) { html = modalChatDetail(); kind = "chatDetail"; }
   if (state.menu === "mcp" && state.logFor) { html = modalLog(); kind = "log"; }
   if (state.editing) { html = modalEditor(); kind = "editor"; }
   if (state.mEditing) { html = modalMEditor(); kind = "mEditor"; }
@@ -2241,14 +2400,51 @@ function modalMDiff() {
   </div></div>`;
 }
 
+/** Contexte Ollama probablement tronqué : avertissement du détail d'une réponse. */
+function truncatedBanner(x) {
+  return x.contextTruncated ? `<div class="banner error small"><b>⚠ ${tr("Contexte probablement tronqué")}</b> — ${tr("le modèle a reçu {n} tokens d'entrée pour environ {expected} attendus.", { n: fmt.n(x.promptTokens), expected: fmt.n(x.expectedPromptTokens) })}
+        ${tr("Ollama coupe sans erreur le début d'une entrée plus longue que son contexte : le modèle a pu répondre sans une partie du prompt système, ce résultat ne reflète donc pas sa qualité.")}
+        ${tr("Augmenter le contexte (ex. {cmd} puis relancer Ollama) et rejouer le test.", { cmd: '<span class="mono">launchctl setenv OLLAMA_CONTEXT_LENGTH 16384</span>' })}</div>` : "";
+}
+
+/** Mesures d'une réponse du bench prompt (rapport ou chat). */
+function promptMeasures(x) {
+  return `<div class="section"><h3>${tr("Mesures")}</h3>
+        <dl class="kv">
+          <div><dt>${tr("Latence")}</dt><dd>${fmt.s(x.latencyMs)}</dd></div>
+          ${x.ttftMs != null ? `<div><dt>${tr("Premier token")}</dt><dd>${fmt.s(x.ttftMs)}</dd></div>` : ""}
+          <div><dt>${tr("Tokens entrée")}</dt><dd class="${x.contextTruncated ? "warn-t" : ""}">${fmt.n(x.promptTokens)}${x.expectedPromptTokens ? ` <span class="muted small" style="font-weight:400">/ ≈ ${tr("{n} attendus", { n: fmt.n(x.expectedPromptTokens) })}</span>` : ""}</dd></div>
+          <div><dt>${tr("Tokens sortie")}</dt><dd>${fmt.n(x.completionTokens)}</dd></div>
+          <div><dt>${tr("Débit")}</dt><dd>${x.tokensPerSec ? x.tokensPerSec + " tok/s" : "–"}</dd></div>
+          <div><dt>${tr("Coût")}</dt><dd>${money(x.cost)}</dd></div>
+          <div><dt>${tr("Fin de génération")}</dt><dd>${esc(x.finishReason || "–")}</dd></div>
+          <div><dt>${tr("Exécuté le")}</dt><dd class="small">${fmt.date(x.at)}</dd></div>
+        </dl>
+      </div>`;
+}
+
+/** Requête envoyée au modèle et réponse (brute et JSON interprété). `promptAction` : action qui affiche le prompt système. */
+function promptExchange(x, promptAction) {
+  const msgs = x.request?.body?.messages || [];
+  const userMsg = msgs.at(-1)?.content || "";
+  const history = msgs.slice(1, -1);
+  return `<div class="section"><h3>${tr("Requête")}</h3>
+        ${history.length ? `<div class="small muted">${tr("Historique envoyé")}</div>${history.map((h) => `<pre><b>${esc(h.role)}</b> ${esc(h.content)}</pre>`).join("")}` : ""}
+        <div class="small muted">${tr("Message utilisateur envoyé")}</div>
+        <pre>${esc(userMsg)}</pre>
+        <details><summary class="small">${tr("Corps complet de la requête")} (${esc(x.request?.model || x.request?.url || "")})</summary><pre>${esc(JSON.stringify(x.request?.body, null, 2))}</pre></details>
+        <div><button class="link small" data-action="${promptAction}">${tr("Voir le prompt système")}</button></div>
+      </div>
+
+      <div class="section"><h3>${tr("Réponse brute du modèle")}</h3><pre>${esc(x.raw || tr("(vide)"))}</pre></div>
+      ${x.parsed ? `<div class="section"><h3>${tr("JSON interprété")}</h3><pre>${esc(JSON.stringify(x.parsed, null, 2))}</pre></div>` : ""}`;
+}
+
 function drawerResult() {
   const r = state.report;
   const x = r.results.find((y) => y.id === state.resultId);
   if (!x) return "";
   const c = r.cases.find((y) => y.id === x.caseId);
-  const msgs = x.request?.body?.messages || [];
-  const userMsg = msgs.at(-1)?.content || "";
-  const history = msgs.slice(1, -1);
   const busy = state.replaying.has(x.id);
   const label = { pass: tr("Réussi"), fail: tr("Échec"), error: tr("Erreur d'appel") }[x.status];
 
@@ -2264,25 +2460,13 @@ function drawerResult() {
         <b>${label}</b>${x.failures.length && x.status !== "pass" ? " — " + esc(x.failures.join(" ; ")) : ""}
         ${x.error ? `<div class="mono small" style="margin-top:4px">${esc(x.error)}</div>` : ""}
       </div>
-      ${x.contextTruncated ? `<div class="banner error small"><b>⚠ ${tr("Contexte probablement tronqué")}</b> — ${tr("le modèle a reçu {n} tokens d'entrée pour environ {expected} attendus.", { n: fmt.n(x.promptTokens), expected: fmt.n(x.expectedPromptTokens) })}
-        ${tr("Ollama coupe sans erreur le début d'une entrée plus longue que son contexte : le modèle a pu répondre sans une partie du prompt système, ce résultat ne reflète donc pas sa qualité.")}
-        ${tr("Augmenter le contexte (ex. {cmd} puis relancer Ollama) et rejouer le test.", { cmd: '<span class="mono">launchctl setenv OLLAMA_CONTEXT_LENGTH 16384</span>' })}</div>` : ""}
+      ${truncatedBanner(x)}
       <div class="btns">
         <button class="b primary" data-action="replay" data-id="${esc(x.id)}" ${busy || r.status === "running" ? "disabled" : ""}>${busy ? `<span class="spin"></span> ${tr("Rejeu…")}` : tr("Rejouer ce test")}</button>
         <span class="muted small">${tr("Le rejeu utilise la version actuelle du cas dans « Cas de test ».")}</span>
       </div>
 
-      <div class="section"><h3>${tr("Mesures")}</h3>
-        <dl class="kv">
-          <div><dt>${tr("Latence")}</dt><dd>${fmt.s(x.latencyMs)}</dd></div>
-          <div><dt>${tr("Tokens entrée")}</dt><dd class="${x.contextTruncated ? "warn-t" : ""}">${fmt.n(x.promptTokens)}${x.expectedPromptTokens ? ` <span class="muted small" style="font-weight:400">/ ≈ ${tr("{n} attendus", { n: fmt.n(x.expectedPromptTokens) })}</span>` : ""}</dd></div>
-          <div><dt>${tr("Tokens sortie")}</dt><dd>${fmt.n(x.completionTokens)}</dd></div>
-          <div><dt>${tr("Débit")}</dt><dd>${x.tokensPerSec ? x.tokensPerSec + " tok/s" : "–"}</dd></div>
-          <div><dt>${tr("Coût")}</dt><dd>${money(x.cost)}</dd></div>
-          <div><dt>${tr("Fin de génération")}</dt><dd>${esc(x.finishReason || "–")}</dd></div>
-          <div><dt>${tr("Exécuté le")}</dt><dd class="small">${fmt.date(x.at)}</dd></div>
-        </dl>
-      </div>
+      ${promptMeasures(x)}
 
       <div class="section"><h3>${tr("Vérifications")}</h3>
         ${x.checks.length ? `<ul class="checks">
@@ -2290,16 +2474,7 @@ function drawerResult() {
         </ul>` : `<p class="muted small">${tr("Aucune vérification.")}</p>`}
       </div>
 
-      <div class="section"><h3>${tr("Requête")}</h3>
-        ${history.length ? `<div class="small muted">${tr("Historique envoyé")}</div>${history.map((h) => `<pre><b>${esc(h.role)}</b> ${esc(h.content)}</pre>`).join("")}` : ""}
-        <div class="small muted">${tr("Message utilisateur envoyé")}</div>
-        <pre>${esc(userMsg)}</pre>
-        <details><summary class="small">${tr("Corps complet de la requête")} (${esc(x.request?.model || x.request?.url || "")})</summary><pre>${esc(JSON.stringify(x.request?.body, null, 2))}</pre></details>
-        <div><button class="link small" data-action="showPrompt">${tr("Voir le prompt système")}</button></div>
-      </div>
-
-      <div class="section"><h3>${tr("Réponse brute du modèle")}</h3><pre>${esc(x.raw || tr("(vide)"))}</pre></div>
-      ${x.parsed ? `<div class="section"><h3>${tr("JSON interprété")}</h3><pre>${esc(JSON.stringify(x.parsed, null, 2))}</pre></div>` : ""}
+      ${promptExchange(x, "showPrompt")}
 
       ${x.previous?.length ? `<div class="section"><h3>${tr("Essais précédents ({n})", { n: x.previous.length })}</h3>
         ${x.previous.map((p) => `<details><summary class="small"><span class="pill ${p.status}">${RESULT_ICON[p.status]}</span> ${fmt.date(p.at)} · ${fmt.s(p.latencyMs)} ${p.status !== "pass" ? "· " + esc(p.failures.join(" ; ")) : ""}</summary><pre>${esc(p.raw || "")}</pre></details>`).join("")}
@@ -3699,12 +3874,7 @@ function drawerMResult() {
           ${st.reply != null ? `<div class="small muted">${tr("Réponse (message)")}</div><pre>${esc(st.reply)}</pre>` : ""}
           ${st.error ? `<div class="bad-t small mono">${esc(st.error)}</div>` : ""}
           ${st.checks.length ? `<ul class="checks">${st.checks.map((k) => `<li><span class="${k.pass ? "ok-t" : "bad-t"}">${k.pass ? "✓" : "✗"}</span> ${esc(k.label)}</li>`).join("")}</ul>` : `<div class="muted small">${tr("Pas de vérification : réussite si pas d'erreur technique.")}</div>`}
-          <div class="trace server">
-            <div class="trace-h"><span class="ico">⇄</span><div><div class="t">${tr("Serveur")} · <span class="mono">${esc(state.mStatus?.chatPath || "")}</span></div><div class="sub">${tr("Échange entre le bench et le serveur testé")}</div></div></div>
-            <details><summary class="small">${tr("Requête envoyée au serveur")}</summary><pre>${esc(JSON.stringify(st.request, null, 2))}</pre></details>
-            <details><summary class="small">${tr("Réponse du serveur")}</summary><pre>${esc(typeof st.response === "string" ? st.response : JSON.stringify(st.response, null, 2))}</pre></details>
-          </div>
-          ${llmCallsBlock(st.llmCalls || [])}
+          ${stepTrace(st)}
         </div>`).join("")}
       ${x.steps.length < (c?.steps.length || 0) ? `<p class="muted small">${tr("{n} étape(s) non jouée(s) après une erreur.", { n: c.steps.length - x.steps.length })}</p>` : ""}
     </aside>
@@ -3796,6 +3966,19 @@ function modalMEditor() {
   </div>`;
 }
 
+/** Échange bench ↔ serveur d'une étape, puis les appels LLM faits par le serveur (rapport ou chat). */
+function stepTrace(st, openResponse = false) {
+  return `<div class="trace server">
+            <div class="trace-h"><span class="ico">⇄</span><div><div class="t">${tr("Serveur")} · <span class="mono">${esc(state.mStatus?.chatPath || "")}</span></div><div class="sub">${tr("Échange entre le bench et le serveur testé")}</div></div></div>
+            <details><summary class="small">${tr("Requête envoyée au serveur")}</summary>${jsonPre(st.request)}</details>
+            <details ${openResponse ? "open" : ""}><summary class="small">${tr("Réponse du serveur")}</summary>${jsonPre(st.response)}</details>
+          </div>
+          ${llmCallsBlock(st.llmCalls || [])}`;
+}
+
+/** Prompt système d'un appel LLM capturé (hash → texte) : rapport serveur ouvert, sinon conversation du chat. */
+const serverPrompt = (h) => state.mReport?.prompts?.[h] ?? state.mChat.prompts[h];
+
 function llmCallsBlock(calls) {
   return `<div class="trace llm">
     <div class="trace-h"><span class="ico">✦</span><div><div class="t">${tr("Appels LLM du serveur ({n})", { n: calls.length })}</div><div class="sub">${tr("Requêtes faites par le serveur au modèle pendant cette étape")}</div></div></div>
@@ -3811,10 +3994,10 @@ function llmCallsBlock(calls) {
           ${msgs.map((m) => {
             const content = typeof m.content === "string" ? m.content : JSON.stringify(m.content);
             const ref = content.match(/^<<prompt:([0-9a-f]+)>>$/);
-            return `<pre><b>${esc(m.role)}</b> ${ref ? `<button class="link small" data-action="showMPrompt" data-h="${ref[1]}">${tr("prompt système ({n} caractères) — afficher", { n: (state.mReport?.prompts?.[ref[1]] || "").length.toLocaleString(LOCALE) })}</button>` : esc(content)}</pre>`;
+            return `<pre><b>${esc(m.role)}</b> ${ref ? `<button class="link small" data-action="showMPrompt" data-h="${ref[1]}">${tr("prompt système ({n} caractères) — afficher", { n: (serverPrompt(ref[1]) || "").length.toLocaleString(LOCALE) })}</button>` : esc(content)}</pre>`;
           }).join("")}
           <div class="small muted">${tr("Réponse du modèle")}</div>
-          <pre>${esc(c.content != null ? prettyJson(c.content) : typeof c.response === "string" ? c.response : tr("(vide)"))}</pre>
+          ${c.content != null ? jsonPre(c.content) : `<pre>${esc(typeof c.response === "string" ? c.response : tr("(vide)"))}</pre>`}
           ${c.http ? httpExchange(c) : `<details><summary class="small">${tr("Requête HTTP complète")} (${esc(c.path)})</summary>${jsonPre({ ...c.request, messages: undefined })}</details>
           <details><summary class="small">${tr("Réponse HTTP complète")}</summary>${jsonPre(c.response)}</details>`}
         </div>
@@ -3895,6 +4078,13 @@ const GW_ACTIONS = {
     el.classList.add("on");
     actions[onPick]?.({ value: el.dataset.v });
   },
+  hxTab(el) {
+    const { g, t } = el.dataset;
+    state.hxTab[g] = t;
+    const box = el.closest("details");
+    box.querySelectorAll(":scope > .seg button").forEach((b) => { const on = b.dataset.t === t; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); });
+    box.querySelectorAll(":scope > [data-pane]").forEach((p) => { p.hidden = p.dataset.pane !== t; });
+  },
   revealKey(el) {
     const k = el.previousElementSibling;
     const shown = el.textContent === tr("masquer");
@@ -3971,7 +4161,7 @@ const MCP_ACTIONS = {
     if (el.dataset.menu === state.menu && el.hasAttribute?.("aria-expanded") && !state.sideCollapsed) { state.subFolded = !state.subFolded; render(); return; }
     state.subFolded = false;
     state.menu = el.dataset.menu; store.set("menu", state.menu);
-    state.resultId = null; state.mResultId = null; state.logFor = null;
+    state.resultId = null; state.mResultId = null; state.logFor = null; state.chatDetail = null;
     render(); renderLayer();
     if (state.menu === "mcp") { await Promise.all([guard(loadServers), guard(loadMCases), loadAvail()]); await guard(loadDockLog); }
     else if (state.menu === "gw") { await Promise.all([guard(loadGateway), loadAvail()]); }
@@ -4327,7 +4517,7 @@ const MCP_ACTIONS = {
     toast(tr("{n} cas rejoué(s) · {fixed} désormais réussi(s)", { n: ids.length, fixed }));
   },
   showMPrompt(el) {
-    const text = state.mReport?.prompts?.[el.dataset.h] || tr("(introuvable)");
+    const text = serverPrompt(el.dataset.h) || tr("(introuvable)");
     state.modal = `<div class="overlay center" data-action="closeModal"><div class="panel" data-stop>
       <div class="panel-h"><div><h2>${tr("Prompt système")}</h2><div class="muted small mono">${esc(el.dataset.h)} · ${tr("{n} caractères", { n: text.length.toLocaleString(LOCALE) })}</div></div><button class="icon" data-action="closeModal">✕</button></div>
       <pre style="max-height:70vh">${esc(text)}</pre></div></div>`;
@@ -4386,6 +4576,554 @@ const MCP_ACTIONS = {
     });
   },
 };
+
+// =============================================================================================
+// Chat : messages libres au modèle (bench prompt) ou au serveur (bench serveur)
+// =============================================================================================
+// Une requête par message, réponse en flux NDJSON (un événement par ligne) : requête envoyée, morceaux de
+// texte (prompt) ou appels LLM du serveur (serveur), puis la réponse avec les mêmes détails qu'un rapport.
+// Pas de vérification : rien n'est enregistré, sauf en convertissant la conversation en cas de test.
+
+/** POST dont la réponse est un flux NDJSON : `onEvent` reçoit chaque événement à son arrivée. */
+async function apiStream(path, body, onEvent, signal) {
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "x-llm-bench-lang": LANG, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal,
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.error || res.statusText);
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop();
+    for (const line of lines) if (line.trim()) onEvent(JSON.parse(line));
+  }
+  if (buffer.trim()) onEvent(JSON.parse(buffer));
+}
+
+const chatOf = (bench) => (bench === "server" ? state.mChat : state.chat);
+const chatTurnId = () => Math.random().toString(36).slice(2, 10);
+/** Durée écoulée depuis l'envoi d'un message en cours (mise à jour par chatClock). */
+const elapsed = (r) => fmt.s(Date.now() - r.started);
+const LIVE = ["queued", "waiting", "streaming"];
+
+/**
+ * Plusieurs cibles (modèles ou serveurs) reçoivent chaque message : un tour = un message et une réponse par cible,
+ * affichées en colonnes alignées. Colonnes : cibles déjà présentes dans la conversation, puis celles cochées.
+ */
+function chatColumns(bench) {
+  const c = chatOf(bench);
+  const keys = [];
+  for (const t of c.turns) for (const r of t.replies) if (!keys.includes(r.key)) keys.push(r.key);
+  for (const k of bench === "server" ? c.serverIds : c.models) if (!keys.includes(k)) keys.push(k);
+  return keys;
+}
+/** Réponses abouties d'une cible, dans l'ordre (historique du bench prompt, conversion en cas de test). */
+const doneReplies = (bench, key) => chatOf(bench).turns.flatMap((t) => {
+  const r = t.replies.find((x) => x.key === key);
+  return r && (bench === "server" ? r.step && !r.fatal : r.result?.status === "done") ? [{ t, r }] : [];
+});
+
+/** Met à jour sur place une réponse en cours (texte reçu, durée) sans tout redessiner. */
+function paintReply(t, r) {
+  const el = document.getElementById(`cr-${t.id}-${t.replies.indexOf(r)}`);
+  if (!el) return;
+  const txt = el.querySelector("[data-live-text]");
+  if (txt) txt.textContent = r.text;
+  const clock = el.querySelector("[data-clock]");
+  if (clock) clock.textContent = elapsed(r);
+  const log = $("#chatLog");
+  if (log && state.chatStick !== false) log.scrollTop = log.scrollHeight;
+}
+
+/** Horloge des réponses en cours : la durée défile pendant l'attente. */
+function chatClock(bench) {
+  const timer = setInterval(() => chatOf(bench).turns.forEach((t) => t.replies.filter((r) => LIVE.includes(r.phase)).forEach((r) => paintReply(t, r))), 200);
+  return () => clearInterval(timer);
+}
+
+/** Enregistre la position du défilement : la conversation suit les nouveaux messages tant qu'on est en bas. */
+document.addEventListener("scroll", (e) => {
+  if (e.target?.id === "chatLog") state.chatStick = e.target.scrollTop + e.target.clientHeight >= e.target.scrollHeight - 30;
+}, true);
+
+function chatPhaseChip(r) {
+  const phase = {
+    queued: `<span class="chip" title="${tr("Modèles locaux : un à la fois, pour ne pas saturer la machine")}">${tr("en file")}</span>`,
+    waiting: `<span class="chip accent"><span class="spin"></span> ${tr("en attente")} · <span data-clock>${elapsed(r)}</span></span>`,
+    streaming: `<span class="chip accent"><span class="spin"></span> ${tr("génération")} · <span data-clock>${elapsed(r)}</span></span>`,
+    aborted: `<span class="chip warn">${tr("interrompu")}</span>`,
+    error: `<span class="chip bad">${tr("erreur")}</span>`,
+  }[r.phase];
+  return phase || "";
+}
+
+/** Barre d'outils commune : nouvelle conversation, conversion en cas de test (première colonne). */
+function chatTools(bench, c) {
+  const cols = chatColumns(bench);
+  const done = cols.length && doneReplies(bench, cols[0]).length;
+  return `<button class="b" data-action="chatReset" data-bench="${bench}" ${c.controller || !c.turns.length ? "disabled" : ""}>${tr("Nouvelle conversation")}</button>
+    <button class="b" data-action="chatToCase" data-bench="${bench}" ${c.controller || !done ? "disabled" : ""} title="${esc(cols.length > 1 ? tr("Ouvre l'éditeur de cas avec la conversation de la première colonne ({name}) ; chaque colonne a aussi son lien", { name: bench === "server" ? serverName(cols[0]) : modelOf(cols[0]) }) : tr("Ouvre l'éditeur de cas avec cette conversation"))}">${tr("Enregistrer comme cas de test")}</button>`;
+}
+
+function chatComposer(bench, c, disabled, extra = "") {
+  const n = bench === "server" ? c.serverIds.filter((id) => state.servers.find((s) => s.id === id)?.phase === "running").length : c.models.length;
+  return `<div class="composer">
+    ${extra}
+    <div class="composer-row">
+      <textarea id="chatInput-${bench}" rows="2" data-action="chatDraft" data-bench="${bench}" data-chat-input="${bench}" placeholder="${tr("Votre message… (Entrée pour envoyer, Maj+Entrée pour aller à la ligne)")}" ${disabled ? "disabled" : ""}>${esc(c.draft)}</textarea>
+      ${c.controller
+        ? `<button class="b danger" data-action="chatStop" data-bench="${bench}">${tr("Arrêter")}</button>`
+        : `<button class="b primary" data-action="chatSend" data-bench="${bench}" ${disabled ? "disabled" : ""}>${n > 1 ? tr("Envoyer aux {n}", { n }) : tr("Envoyer")}</button>`}
+    </div>
+  </div>`;
+}
+
+/** Liste déroulante à cases à cocher (cibles du chat). Les options cochées hors liste disponible restent affichées. */
+function chatPickerButton(id, c, summary) {
+  const open = !!c.pickerOpen;
+  return `<button type="button" class="picker-btn" id="${id}Btn" data-action="chatPopToggle" data-pop="${id}" aria-haspopup="listbox" aria-expanded="${open}">
+      <span class="v">${summary}</span><span class="muted">▾</span></button>`;
+}
+
+/**
+ * Conversation en colonnes : en-tête par cible (nom, statistiques, retrait), puis un tour par message.
+ * Une seule cible : affichage d'un chat classique, sans en-tête.
+ */
+function chatLogHtml(bench, cols, replyHtml, empty) {
+  const c = chatOf(bench);
+  if (!c.turns.length) return `<div class="chat-log card" id="chatLog">${empty}</div>`;
+  const multi = cols.length > 1;
+  return `<div class="chat-log card ${multi ? "multi" : ""}" id="chatLog" style="--n:${cols.length}">
+    <div class="chat-inner">
+      ${multi ? `<div class="chat-cols">${cols.map((k) => chatColHead(bench, k)).join("")}</div>` : ""}
+      ${c.turns.map((t) => `<div class="turn">
+        <div class="msg-u">${esc(t.message)}${t.optionsHtml || ""}</div>
+        <div class="replies ${multi ? "" : "one"}">${cols.map((k) => {
+          const r = t.replies.find((x) => x.key === k);
+          return r ? replyHtml(t, r) : `<div class="msg-a none muted small">${tr("non envoyé à cette cible")}</div>`;
+        }).join("")}</div>
+      </div>`).join("")}
+    </div>
+  </div>`;
+}
+
+/** En-tête d'une colonne : cible, moyenne des réponses abouties, lien vers un cas de test, retrait de la sélection. */
+function chatColHead(bench, key) {
+  const c = chatOf(bench);
+  const done = doneReplies(bench, key).map(({ r }) => (bench === "server" ? r.step : r.result));
+  const avg = done.length ? done.reduce((a, x) => a + (x.latencyMs || 0), 0) / done.length : null;
+  const cost = done.reduce((a, x) => a + (bench === "server" ? (x.llmCalls || []).reduce((b, k) => b + (k.cost || 0), 0) : x.cost || 0), 0);
+  const selected = (bench === "server" ? c.serverIds : c.models).includes(key);
+  const s = bench === "server" ? state.servers.find((x) => x.id === key) : null;
+  return `<div class="chat-col">
+    <div class="chat-col-t">
+      <span class="strong ${bench === "server" ? "" : "mono"}" title="${esc(bench === "server" ? `${s?.provider || ""}/${s?.model || ""}` : key)}">${esc(bench === "server" ? serverName(key) : modelOf(key))}</span>
+      ${s && s.phase !== "running" ? phaseChip(s.phase) : ""}
+      ${!selected ? `<span class="chip" title="${tr("Retirée : ne reçoit plus les messages")}">${tr("retirée")}</span>` : ""}
+      ${selected && !c.controller ? `<button class="icon" data-action="chatUntarget" data-bench="${bench}" data-k="${esc(key)}" title="${tr("Ne plus envoyer à cette cible")}" aria-label="${tr("Retirer")}">✕</button>` : ""}
+    </div>
+    <div class="muted small">${done.length ? [tr("moy. {t}", { t: fmt.s(avg) }), cost ? money(cost) : ""].filter(Boolean).join(" · ") : bench === "server" ? esc(s?.model || "") : esc(providerInfo(providerOf(key))?.label || providerOf(key))}
+      ${done.length && !c.controller ? ` · <button class="link small" data-action="chatToCase" data-bench="${bench}" data-k="${esc(key)}">${tr("→ cas de test")}</button>` : ""}</div>
+  </div>`;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Chat du bench prompt
+// ---------------------------------------------------------------------------------------------
+function chatModelPicker(c) {
+  const groups = state.avail.filter((g) => g.models.length);
+  if (!groups.length) return `<span class="muted small">${tr("Aucun modèle disponible.")}</span>`;
+  const started = c.turns.length > 0;
+  const summary = !c.models.length ? `<span class="muted">${tr("— choisir —")}</span>`
+    : c.models.length === 1 ? `<span class="mono">${esc(c.models[0])}</span>`
+    : `<span class="strong">${tr("{n} modèles", { n: c.models.length })}</span> <span class="muted mono small">${esc(c.models.map(modelOf).join(", "))}</span>`;
+  return `<div class="picker" data-picker>
+    ${chatPickerButton("mdlPop", c, summary)}
+    <div class="picker-pop" id="mdlPop" ${c.pickerOpen ? "" : "hidden"}>
+      <input type="search" placeholder="${tr("Filtrer…")}" data-action="pickerFilter" autocomplete="off">
+      <div class="picker-list">
+        ${groups.map((g) => `<div data-group><div class="picker-g">${esc(providerInfo(g.name)?.label || g.name)} ${tierChip(providerInfo(g.name)?.tier)}</div>
+          ${g.models.map((m) => {
+            const on = c.models.includes(m.key);
+            const locked = !on && (started || !!c.controller);
+            return `<label class="picker-o chk ${on ? "on" : ""}" data-v="${esc(m.key)}" title="${locked ? esc(tr("Conversation en cours : « Nouvelle conversation » pour ajouter un modèle")) : ""}">
+              <input type="checkbox" data-action="chatTarget" data-bench="prompt" data-k="${esc(m.key)}" ${on ? "checked" : ""} ${locked || (on && c.controller) ? "disabled" : ""}>
+              <span class="mono">${esc(m.model)}</span>${m.details ? ` <span class="d">· ${esc(m.details)}</span>` : ""}</label>`;
+          }).join("")}</div>`).join("")}
+      </div>
+      <div class="muted small" style="padding:4px 8px">${started ? tr("Conversation en cours : on peut retirer un modèle, pas en ajouter.") : tr("Cocher plusieurs modèles pour comparer leurs réponses au même message.")}</div>
+    </div>
+  </div>`;
+}
+
+function promptReplyHtml(t, r) {
+  const x = r.result;
+  const text = x ? (x.status === "error" ? "" : prettyJson(x.raw || "")) : r.text;
+  const meta = x && x.status === "done" ? [
+    x.ttftMs != null ? `${tr("1er token")} ${fmt.s(x.ttftMs)}` : "",
+    `${tr("total")} ${fmt.s(x.latencyMs)}`,
+    x.promptTokens ? `${x.promptTokens} → ${x.completionTokens ?? "?"} tokens` : "",
+    x.tokensPerSec ? `${x.tokensPerSec} tok/s` : "",
+    x.cost ? money(x.cost) : "",
+    x.finishReason ? esc(x.finishReason) : "",
+  ].filter(Boolean).join(" · ") : "";
+  return `<div class="msg-a" id="cr-${t.id}-${t.replies.indexOf(r)}">
+    <div class="msg-meta"><span class="mono">${esc(modelOf(r.key))}</span> ${chatPhaseChip(r)}
+      ${x?.parsed ? `<span class="chip">JSON</span>` : x?.status === "done" && !x.jsonValid ? `<span class="chip warn">${tr("JSON absent ou invalide")}</span>` : ""}
+      ${x?.contextTruncated ? `<span class="chip warn" title="${esc(tr("Contexte probablement tronqué"))}">⚠ ${tr("contexte probablement tronqué")}</span>` : ""}
+      ${meta ? `<span>${meta}</span>` : ""}
+      ${x ? `<button class="link small" data-action="chatDetail" data-bench="prompt" data-id="${t.id}" data-k="${esc(r.key)}">${tr("Détails")}</button>` : ""}</div>
+    ${r.phase === "waiting" ? `<div class="muted small">${tr("Requête envoyée, en attente du premier token…")}</div>` : ""}
+    ${text || r.phase === "streaming" ? `<div class="txt ${x?.parsed ? "json" : ""} ${r.phase === "streaming" ? "caret" : ""}" ${x ? "" : "data-live-text"}>${esc(text)}</div>` : ""}
+    ${r.error || x?.error ? `<div class="bad-t small mono">${esc(r.error || x.error)}</div>` : ""}
+  </div>`;
+}
+
+function viewChat() {
+  const c = state.chat;
+  const keys = availFlat().map((m) => m.key);
+  // Modèles retirés de la config (ou aucun choisi) : le premier modèle sélectionné pour les campagnes, sinon le premier disponible.
+  if (!c.turns.length) {
+    c.models = c.models.filter((k) => keys.includes(k));
+    if (!c.models.length) { const k = [...state.selModels].find((x) => keys.includes(x)) || keys[0]; if (k) c.models = [k]; }
+  }
+  const cols = chatColumns("prompt");
+  return `<div class="chat">
+    <div class="pagehead"><div><h1>${tr("Chat")}</h1>
+      <p>${tr("Messages libres envoyés au modèle avec le prompt système {version}, réponse en direct. Aucune vérification.", { version: state.status?.prompt?.version ? `<span class="mono">v${esc(state.status.prompt.version)}</span>` : "" })}
+        ${tr("Plusieurs modèles cochés : chacun reçoit le message avec sa propre conversation, réponses côte à côte.")}</p></div></div>
+    <div class="row chat-bar"><div class="field" style="min-width:320px;max-width:520px;flex:1">${tr("Modèles")}${chatModelPicker(c)}</div>
+      <div class="btns" style="align-self:flex-end">${chatTools("prompt", c)}
+      ${c.systemPrompt ? `<button class="link small" data-action="showChatPrompt">${tr("Prompt système")}</button>` : ""}</div></div>
+    ${chatLogHtml("prompt", cols, promptReplyHtml, `<p class="empty">${tr("Écrire un message pour commencer. Les messages précédents sont renvoyés comme historique, comme dans un cas de test.")}</p>`)}
+    ${chatComposer("prompt", c, !c.models.length)}
+  </div>`;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Chat du bench serveur
+// ---------------------------------------------------------------------------------------------
+const runningServers = () => state.servers.filter((s) => s.phase === "running");
+
+/** Résumé des appels LLM d'une étape : nombre, tokens, coût. */
+function callsSummary(calls) {
+  const ok = calls.filter((c) => !c.error);
+  const pt = ok.reduce((a, c) => a + (c.promptTokens || 0), 0), ct = ok.reduce((a, c) => a + (c.completionTokens || 0), 0);
+  const cost = ok.reduce((a, c) => a + (c.cost || 0), 0);
+  return [tr("{n} appel(s) LLM", { n: calls.length }), pt ? `${pt} → ${ct} tokens` : "", cost ? money(cost) : ""].filter(Boolean).join(" · ");
+}
+
+function serverReplyHtml(t, r) {
+  const st = r.step;
+  const calls = st ? st.llmCalls || [] : r.calls;
+  return `<div class="msg-a" id="cr-${t.id}-${t.replies.indexOf(r)}">
+    <div class="msg-meta"><span>${esc(serverName(r.key))}</span> ${chatPhaseChip(r)}
+      ${st ? `${kindChip(st.kind)} ${st.httpStatus ? `<span class="chip">HTTP ${st.httpStatus}</span>` : ""} <span>${fmt.s(st.latencyMs)}${st.summary ? " · " + esc(st.summary) : ""}</span>` : ""}
+      ${calls.length || st ? `<span>${callsSummary(calls)}</span>` : ""}
+      ${st ? `<button class="link small" data-action="chatDetail" data-bench="server" data-id="${t.id}" data-k="${esc(r.key)}">${tr("Détails")}</button>` : ""}</div>
+    ${!st ? `<div class="live-calls">${r.phase === "waiting" ? `<div class="muted small">${r.request ? tr("Requête envoyée au serveur, en attente de sa réponse…") : tr("Envoi…")}</div>` : ""}
+      ${calls.map((c) => `<div class="small"><span class="chip ${c.error ? "bad" : "accent"}">${esc(callKindLabel(c.kind))}</span> <span class="mono">${esc(c.model || "")}</span> · ${fmt.s(c.latencyMs)}${c.promptTokens ? ` · ${c.promptTokens} → ${c.completionTokens ?? "?"} tokens` : ""}${c.error ? ` · <span class="bad-t">${esc(c.error)}</span>` : ""}</div>`).join("")}</div>` : ""}
+    ${st?.reply != null ? `<div class="txt">${esc(st.reply)}</div>` : st && !st.error ? jsonPre(st.response) : ""}
+    ${r.error || st?.error ? `<div class="bad-t small mono">${esc(r.error || st.error)}</div>` : ""}
+    ${r.fatal ? `<div class="muted small">${tr("Message non gardé dans la conversation : le suivant reprend au même point.")}</div>` : ""}
+  </div>`;
+}
+
+/** Bouton Démarrer / Arrêter d'un serveur (même action que l'onglet Serveurs) ; désactivé pendant une étape en cours. */
+function serverOpButton(s, compact = false) {
+  const busy = isBusyPhase(s.phase);
+  const op = s.phase === "running" ? "stop" : "start";
+  const label = busy ? tr("Démarrage…") : op === "stop" ? tr("Arrêter") : tr("Démarrer");
+  const icon = busy ? '<span class="spin"></span>' : op === "stop" ? "■" : "▶";
+  return `<button type="button" class="b ${op === "start" ? "primary" : ""} ${compact ? "srv-op" : ""}" data-action="serverOp" data-op="${op}" data-id="${esc(s.id)}" ${busy || state.mChat.controller ? "disabled" : ""} title="${esc(label)}" aria-label="${esc(label + " " + s.name)}">${icon}${compact ? "" : ` ${label}`}</button>`;
+}
+
+/** Liste des serveurs du chat (cases à cocher) : tous les serveurs créés, leur état, et de quoi les démarrer ou les arrêter sur place. */
+function chatServerPicker(c, sel) {
+  const started = c.turns.length > 0;
+  const summary = !sel.length ? `<span class="muted">${tr("— choisir —")}</span>`
+    : sel.length === 1 ? `<span class="strong">${esc(sel[0].name)}</span> <span class="muted mono small">${esc(sel[0].model)}</span> ${phaseChip(sel[0].phase)}`
+    : `<span class="strong">${tr("{n} serveurs", { n: sel.length })}</span> <span class="muted small">${esc(sel.map((s) => s.name).join(", "))}</span>`;
+  return `<div class="picker srv-picker" data-picker>
+    ${chatPickerButton("srvPop", c, summary)}
+    <div class="picker-pop" id="srvPop" ${c.pickerOpen ? "" : "hidden"}>
+      <div class="picker-list" role="listbox" aria-multiselectable="true">
+        ${state.servers.map((s) => {
+          const on = c.serverIds.includes(s.id);
+          const locked = !on && (started || !!c.controller);
+          return `<div class="srv-o ${on ? "on" : ""}">
+          <label class="picker-o chk" title="${locked ? esc(tr("Conversation en cours : « Nouvelle conversation » pour ajouter un serveur")) : ""}">
+            <input type="checkbox" data-action="chatTarget" data-bench="server" data-k="${esc(s.id)}" ${on ? "checked" : ""} ${locked || (on && c.controller) ? "disabled" : ""}>
+            <span class="srv-o-t"><span class="strong">${esc(s.name)}</span><span class="d mono">${esc(s.provider)}/${esc(s.model)}</span></span>
+          </label>
+          ${phaseChip(s.phase)}
+          ${serverOpButton(s, true)}
+        </div>`;
+        }).join("")}
+      </div>
+      <div class="muted small" style="padding:4px 8px">${started ? tr("Conversation en cours : on peut retirer un serveur, pas en ajouter.") : tr("Cocher plusieurs serveurs pour comparer leurs réponses au même message.")}</div>
+      <button type="button" class="link small" style="justify-self:start;padding:4px 8px" data-action="mtab" data-tab="servers">${tr("Gérer les serveurs")}</button>
+    </div>
+  </div>`;
+}
+
+/** Chat sans serveur utilisable : aucun serveur créé (en créer un), ou serveurs choisis arrêtés (les démarrer). */
+function chatNoServer(sel) {
+  return `<div class="chat-empty">
+    <div class="chat-empty-ico" aria-hidden="true">${menuIcon("mcp")}</div>
+    ${sel.length ? `<h2>${sel.length > 1 ? tr("Aucun des serveurs choisis n'est actif") : tr("Le serveur {name} n'est pas actif", { name: esc(sel[0].name) })}</h2>
+      <p class="muted">${tr("Le démarrer pour lui envoyer des messages, ou choisir un autre serveur dans la liste.")}</p>
+      ${sel.map((s) => `<div class="btns"><span class="strong">${esc(s.name)}</span> ${phaseChip(s.phase)} ${serverOpButton(s)}</div>
+        ${s.phase === "failed" && s.error ? `<div class="bad-t small mono">${esc(s.error)}</div>` : ""}`).join("")}`
+    : state.servers.length ? `<h2>${tr("Aucun serveur choisi")}</h2><p class="muted">${tr("Cocher un ou plusieurs serveurs dans la liste.")}</p>`
+    : `<h2>${tr("Aucun serveur")}</h2>
+      <p class="muted">${tr("Créer un serveur (une copie du projet branchée sur un modèle) pour lui envoyer des messages.")}</p>
+      <button class="b primary" data-action="mtab" data-tab="servers">+ ${tr("Créer un serveur")}</button>`}
+  </div>`;
+}
+
+function viewMChat() {
+  const c = state.mChat;
+  // Serveurs choisis supprimés (ou aucun) : le premier actif, sinon le premier créé.
+  if (!c.turns.length) {
+    c.serverIds = c.serverIds.filter((id) => state.servers.some((s) => s.id === id));
+    if (!c.serverIds.length && state.servers.length) c.serverIds = [(runningServers()[0] || state.servers[0]).id];
+  }
+  const sel = c.serverIds.map((id) => state.servers.find((s) => s.id === id)).filter(Boolean);
+  const stopped = sel.filter((s) => s.phase !== "running");
+  const started = c.turns.length > 0;
+  const fields = state.mStatus?.caseFields || [];
+  const options = (state.mStatus?.stepOptions || []).filter((o) => !(o.notFirst && !started));
+  const serverOk = sel.length > stopped.length;
+  return `<div class="chat">
+    <div class="pagehead"><div><h1>${tr("Chat")}</h1>
+      <p>${tr("Messages libres envoyés à {path} du serveur, dans une même session, réponse et appels LLM en direct. Aucune vérification.", { path: `<span class="mono">${esc(state.mStatus?.chatPath || "")}</span>` })}
+        ${tr("Plusieurs serveurs cochés : chacun garde sa propre session, réponses côte à côte.")}</p></div></div>
+    <div class="row chat-bar">
+      ${state.servers.length ? `<div class="field" style="min-width:320px;max-width:520px;flex:1">${tr("Serveurs")}${chatServerPicker(c, sel)}</div>` : ""}
+      ${fields.map((f) => `<label class="field" title="${esc(started ? tr("Fixé pour la conversation : « Nouvelle conversation » pour le changer") : "")}">${esc(f.label)}${fieldInput(f, c.fields[f.name] ?? f.default ?? "", "chatField." + f.name).replace("<input", `<input ${started ? "disabled" : ""}`).replace("<select", `<select ${started ? "disabled" : ""}`)}</label>`).join("")}
+      <div class="btns" style="align-self:flex-end">${chatTools("server", c)}</div>
+    </div>
+    ${chatLogHtml("server", chatColumns("server"), serverReplyHtml, serverOk ? `<p class="empty">${tr("Écrire un message pour commencer. Les messages suivants restent dans la même session du serveur, comme les étapes d'un cas.")}</p>` : chatNoServer(sel))}
+    ${started && stopped.length ? `<div class="banner error small chat-stopped"><span>${stopped.length > 1 ? tr("Serveurs non actifs : {names}. Ils ne recevront pas les messages tant qu'ils ne sont pas démarrés.", { names: esc(stopped.map((s) => s.name).join(", ")) }) : tr("Le serveur {name} n'est pas actif : le démarrer pour continuer la conversation.", { name: esc(stopped[0].name) })}</span>
+      <span class="btns">${stopped.map((s) => serverOpButton(s)).join("")}</span></div>` : ""}
+    ${chatComposer("server", c, !serverOk, options.length ? `<div class="btns small">${options.map((o) => `<label title="${esc(o.description || "")}"><input type="checkbox" data-action="chatOption" data-name="${esc(o.name)}" ${c.options[o.name] ? "checked" : ""}> ${esc(o.label)}</label>`).join("")}</div>` : "")}
+  </div>`;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Détail d'une réponse du chat : mêmes sections que le détail d'un résultat de rapport, sans vérification
+// ---------------------------------------------------------------------------------------------
+function modalChatDetail() {
+  const { bench, id, key } = state.chatDetail;
+  const t = chatOf(bench).turns.find((x) => x.id === id);
+  const r = t?.replies.find((x) => x.key === key);
+  if (!r) return "";
+  const head = (sub, title) => `<div class="panel-h"><div><div class="muted small">${sub}</div><h2>${title}</h2></div><button class="icon" data-action="closeLayer" title="${tr("Fermer")}">✕</button></div>`;
+  if (bench === "prompt") {
+    const x = r.result;
+    return `<div class="overlay center" data-action="closeLayer"><aside class="panel wide" data-stop>
+      ${head(`<span class="mono">${esc(x.model)}</span> · ${tr("chat")}`, esc(t.message.length > 80 ? t.message.slice(0, 80) + "…" : t.message))}
+      ${x.error ? `<div class="banner error"><b>${tr("Erreur d'appel")}</b><div class="mono small" style="margin-top:4px">${esc(x.error)}</div></div>` : ""}
+      ${truncatedBanner(x)}
+      ${promptMeasures(x)}
+      ${promptExchange(x, "showChatPrompt")}
+    </aside></div>`;
+  }
+  const st = r.step;
+  return `<div class="overlay center" data-action="closeLayer"><aside class="panel wide" data-stop>
+    ${head(`${esc(serverName(r.key))} · ${tr("chat")} · ${tr("message {n}", { n: r.index + 1 })}`, esc(t.message.length > 80 ? t.message.slice(0, 80) + "…" : t.message))}
+    <div class="step">
+      <div class="step-h">
+        <span>${kindChip(st.kind)} ${st.httpStatus ? `<span class="chip">HTTP ${st.httpStatus}</span>` : ""}</span>
+        <span class="muted small">${fmt.s(st.latencyMs)}${st.summary ? " · " + esc(st.summary) : ""}</span>
+      </div>
+      <pre><b>user</b> ${esc(st.message)}</pre>
+      ${st.reply != null ? `<div class="small muted">${tr("Réponse (message)")}</div><pre>${esc(st.reply)}</pre>` : ""}
+      ${st.error ? `<div class="bad-t small mono">${esc(st.error)}</div>` : ""}
+      ${stepTrace(st, true)}
+    </div>
+  </aside></div>`;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Envoi d'un message à toutes les cibles cochées
+// ---------------------------------------------------------------------------------------------
+/** Lance `send` pour chaque réponse : en parallèle, sauf les modèles locaux (Ollama) envoyés un par un. */
+async function sendAll(bench, turn, send) {
+  const c = chatOf(bench);
+  c.controller = new AbortController();
+  state.chatStick = true;
+  const local = bench === "prompt" ? turn.replies.filter((r) => providerInfo(providerOf(r.key))?.kind === "ollama") : [];
+  local.slice(1).forEach((r) => { r.phase = "queued"; });
+  const stopClock = chatClock(bench);
+  render();
+  const one = async (r) => {
+    r.phase = "waiting"; r.started = Date.now();
+    try {
+      await send(r, c.controller.signal);
+    } catch (e) {
+      if (e.name === "AbortError") r.phase = "aborted";
+      else { r.error = e.message; r.phase = "error"; }
+    } finally {
+      if (LIVE.includes(r.phase)) r.phase = "aborted";
+      render();
+    }
+  };
+  await Promise.all([
+    ...turn.replies.filter((r) => !local.includes(r) && r.phase !== "error").map(one),
+    (async () => { for (const r of local) { if (c.controller.signal.aborted) { r.phase = "aborted"; continue; } await one(r); } })(),
+  ]);
+  stopClock();
+  c.controller = null;
+  render();
+  $(`#chatInput-${bench}`)?.focus();
+}
+
+async function sendPromptChat() {
+  const c = state.chat;
+  const message = c.draft.trim();
+  if (!message || c.controller || !c.models.length) return;
+  const turn = { id: chatTurnId(), message, replies: c.models.map((key) => ({ key, text: "", phase: "waiting", started: Date.now() })) };
+  // Historique propre à chaque modèle : ses échanges aboutis, sa réponse brute comme message assistant.
+  const histories = Object.fromEntries(c.models.map((k) => [k, doneReplies("prompt", k).flatMap(({ t, r }) => [{ role: "user", content: t.message }, { role: "assistant", content: r.result.raw || "" }])]));
+  c.turns.push(turn);
+  c.draft = "";
+  await sendAll("prompt", turn, (r, signal) => apiStream("/api/prompt/chat", { model: r.key, message, history: histories[r.key] }, (e) => {
+    if (e.type === "request") { r.request = e.request; c.systemPrompt = e.systemPrompt; c.promptVersion = e.promptVersion; return; }
+    if (e.type === "delta") {
+      r.text += e.text;
+      if (r.phase === "waiting") { r.phase = "streaming"; render(); } else paintReply(turn, r);
+      return;
+    }
+    if (e.type === "response") { r.result = e.result; r.phase = e.result.status; }
+    if (e.type === "error") { r.error = e.message; r.phase = "error"; }
+    render();
+  }, signal));
+}
+
+async function sendServerChat() {
+  const c = state.mChat;
+  const message = c.draft.trim();
+  if (!message || c.controller || !c.serverIds.length) return;
+  const started = c.turns.length > 0;
+  const stepOptions = state.mStatus?.stepOptions || [];
+  const options = Object.fromEntries(Object.entries(c.options).filter(([name, v]) => v && !stepOptions.find((o) => o.name === name && o.notFirst && !started)));
+  const fields = Object.fromEntries((state.mStatus?.caseFields || []).map((f) => [f.name, c.fields[f.name] ?? f.default ?? ""]));
+  const opts = stepOptions.filter((o) => options[o.name]);
+  const turn = {
+    id: chatTurnId(), message, options,
+    optionsHtml: opts.length ? `<div class="msg-opts">${opts.map((o) => `<span class="chip">${esc(o.label)}</span>`).join(" ")}</div>` : "",
+    replies: c.serverIds.map((key) => {
+      const s = state.servers.find((x) => x.id === key);
+      const r = { key, calls: [], phase: "waiting", started: Date.now(), index: doneReplies("server", key).length };
+      if (s?.phase !== "running") Object.assign(r, { phase: "error", error: tr("le serveur {name} est arrêté", { name: s?.name || key }), fatal: true });
+      return r;
+    }),
+  };
+  c.turns.push(turn);
+  c.draft = "";
+  await sendAll("server", turn, (r, signal) => apiStream("/api/server/chat", { chatId: c.chatIds[r.key], serverId: r.key, message, options, fields }, (e) => {
+    if (e.type === "request") { r.request = e.request; c.chatIds[r.key] = e.chatId; r.index = e.index; }
+    if (e.type === "llm-call") { r.calls.push(e.call); Object.assign(c.prompts, e.prompts); }
+    if (e.type === "response") {
+      r.step = e.step;
+      Object.assign(c.prompts, e.prompts);
+      r.fatal = e.step.status === "error" && !e.step.httpStatus;
+      r.phase = "done";
+    }
+    if (e.type === "error") { r.error = e.message; r.phase = "error"; }
+    render();
+  }, signal));
+}
+
+const CHAT_ACTIONS = {
+  chatDraft(el) { chatOf(el.dataset.bench).draft = el.value; },
+  chatSend(el) { return el.dataset.bench === "server" ? sendServerChat() : sendPromptChat(); },
+  chatStop(el) { chatOf(el.dataset.bench).controller?.abort(); },
+  chatPopToggle(el) {
+    // L'état ouvert est relu sur la liste au rendu suivant (render) : on bascule la liste elle-même.
+    const pop = $("#" + el.dataset.pop);
+    if (pop) pop.hidden = !pop.hidden;
+    render();
+  },
+  /** Coche / décoche une cible. Un serveur ajouté démarre une nouvelle session ; un modèle, sa propre conversation. */
+  chatTarget(el) {
+    const bench = el.dataset.bench, c = chatOf(bench), k = el.dataset.k;
+    const list = bench === "server" ? "serverIds" : "models";
+    c[list] = el.checked ? [...c[list].filter((x) => x !== k), k] : c[list].filter((x) => x !== k);
+    store.set(bench === "server" ? "chatServers" : "chatModels", c[list]);
+    render();
+  },
+  chatUntarget(el) {
+    const bench = el.dataset.bench, c = chatOf(bench);
+    const list = bench === "server" ? "serverIds" : "models";
+    c[list] = c[list].filter((x) => x !== el.dataset.k);
+    store.set(bench === "server" ? "chatServers" : "chatModels", c[list]);
+    render();
+  },
+  chatOption(el) { state.mChat.options[el.dataset.name] = el.checked; },
+  chatReset(el) {
+    const c = chatOf(el.dataset.bench);
+    if (c.controller) return;
+    Object.assign(c, { turns: [] }, el.dataset.bench === "server" ? { chatIds: {}, prompts: {} } : {});
+    render();
+    $(`#chatInput-${el.dataset.bench}`)?.focus();
+  },
+  chatDetail(el) { state.chatDetail = { bench: el.dataset.bench, id: el.dataset.id, key: el.dataset.k }; renderLayer(); },
+  showChatPrompt() {
+    const c = state.chat;
+    state.modal = `<div class="overlay center" data-action="closeModal"><div class="panel" data-stop>
+      <div class="panel-h"><div><h2>${tr("Prompt système")}</h2><div class="muted small">${c.promptVersion ? `${tr("version")} ${esc(c.promptVersion)} · ` : ""} ${tr("{n} caractères", { n: c.systemPrompt.length.toLocaleString(LOCALE) })}</div></div><button class="icon" data-action="closeModal">✕</button></div>
+      <pre style="max-height:70vh">${esc(c.systemPrompt)}</pre></div></div>`;
+    renderLayer();
+  },
+  /** Conversation d'une cible (par défaut la première colonne) convertie en cas de test : l'éditeur s'ouvre pré-rempli, vérifications à ajouter. */
+  async chatToCase(el) {
+    const bench = el.dataset.bench;
+    const done = doneReplies(bench, el.dataset.k || chatColumns(bench)[0]);
+    if (!done.length) return;
+    if (bench === "server") {
+      const c = state.mChat;
+      const steps = done.map(({ t }) => ({ message: t.message, ...t.options, checks: [{ type: "notError" }, LANGUAGE_CHECK()] }));
+      const fields = Object.fromEntries((state.mStatus?.caseFields || []).map((f) => [f.name, c.fields[f.name] ?? f.default ?? ""]));
+      state.mEditing = { originalId: null, draft: { id: "", description: "", category: "", ...caseDefaults(), ...fields, steps } };
+    } else {
+      const nc = state.status?.prompt?.newCase || {};
+      const draft = structuredClone({ id: "", description: "", category: "", checks: [], ...nc });
+      draft.message = done.at(-1).t.message;
+      draft.history = done.slice(0, -1).flatMap(({ t, r }) => [{ role: "user", content: t.message }, { role: "assistant", content: r.result.raw || "" }]);
+      if (!draft.checks.some((k) => k.type === "language")) draft.checks.push(LANGUAGE_CHECK());
+      state.editing = { originalId: null, draft };
+    }
+    renderLayer();
+  },
+};
+
+// Champs du cas (bench serveur) : fixés pour la conversation, lus à l'envoi du premier message.
+for (const type of ["input", "change"]) document.addEventListener(type, (e) => {
+  const path = e.target.dataset?.path;
+  if (!path?.startsWith("chatField.")) return;
+  const el = e.target;
+  state.mChat.fields[path.slice("chatField.".length)] = el.type === "checkbox" ? el.checked : el.dataset.kind === "number" ? (el.value === "" ? "" : Number(el.value)) : el.value;
+});
+
+// Entrée envoie le message, Maj+Entrée va à la ligne.
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" || e.shiftKey || e.isComposing || !e.target.matches?.("[data-chat-input]")) return;
+  e.preventDefault();
+  CHAT_ACTIONS.chatSend({ dataset: { bench: e.target.dataset.chatInput } });
+});
 
 // =============================================================================================
 // Actions
@@ -4573,6 +5311,7 @@ const actions = {
     else if (state.editing) { state.editing = null; }
     else if (state.mEditing) { state.mEditing = null; }
     else if (state.logFor) { state.logFor = null; }
+    else if (state.chatDetail) { state.chatDetail = null; }
     else { state.resultId = null; state.mResultId = null; render(); }
     renderLayer();
   },
@@ -4647,7 +5386,7 @@ const actions = {
   },
 };
 
-Object.assign(actions, MCP_ACTIONS, GW_ACTIONS, CC_ACTIONS);
+Object.assign(actions, MCP_ACTIONS, GW_ACTIONS, CC_ACTIONS, CHAT_ACTIONS);
 
 async function startPull(name) {
   name = String(name || "").trim();
@@ -4685,7 +5424,10 @@ document.addEventListener("click", (e) => {
   document.querySelectorAll(".picker-pop:not([hidden])").forEach((p) => { if (!p.closest("[data-picker]").contains(e.target)) p.hidden = true; });
 }, true);
 addEventListener("scroll", (e) => {
-  document.querySelectorAll(".picker-pop:not([hidden])").forEach((p) => { if (!p.contains(e.target)) p.hidden = true; });
+  // Seul un défilement qui déplace la liste (page ou conteneur de la liste) la referme.
+  document.querySelectorAll(".picker-pop:not([hidden])").forEach((p) => {
+    if (!p.contains(e.target) && (e.target === document || e.target.contains?.(p.closest("[data-picker]")))) p.hidden = true;
+  });
 }, true);
 addEventListener("resize", () => document.querySelectorAll(".picker-pop:not([hidden])").forEach((p) => { p.hidden = true; }));
 document.addEventListener("keydown", (e) => {
