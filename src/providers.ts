@@ -276,26 +276,101 @@ export async function complete(ref: ModelRef, body: Record<string, unknown>, opt
   }
   const json = (await res.json()) as any;
   const message = json.choices?.[0]?.message;
-  const content = String(message?.content ?? "").trim();
-  // Appels d'outils (tools passés par prompt.request) : rendus en JSON pour que les vérifications les lisent,
-  // ex. tool_calls.0.name ; arguments décodés quand c'est possible.
-  const toolCalls = Array.isArray(message?.tool_calls) ? message.tool_calls : [];
-  const text = toolCalls.length
-    ? JSON.stringify({
-        tool_calls: toolCalls.map((c: any) => {
-          let args: unknown = c.function?.arguments ?? {};
-          try { if (typeof args === "string") args = JSON.parse(args || "{}"); } catch { /* arguments non JSON : gardés tels quels */ }
-          return { name: c.function?.name, arguments: args };
-        }),
-        ...(content ? { content } : {}),
-      }, null, 2)
-    : content;
   return {
-    text,
+    text: completionText(String(message?.content ?? "").trim(), Array.isArray(message?.tool_calls) ? message.tool_calls : []),
     promptTokens: json.usage?.prompt_tokens,
     completionTokens: json.usage?.completion_tokens,
     finishReason: json.choices?.[0]?.finish_reason,
   };
+}
+
+/**
+ * Appels d'outils (tools passés par prompt.request) : rendus en JSON pour que les vérifications les lisent,
+ * ex. tool_calls.0.name ; arguments décodés quand c'est possible.
+ */
+function completionText(content: string, toolCalls: any[]) {
+  if (!toolCalls.length) return content;
+  return JSON.stringify({
+    tool_calls: toolCalls.map((c: any) => {
+      let args: unknown = c.function?.arguments ?? {};
+      try { if (typeof args === "string") args = JSON.parse(args || "{}"); } catch { /* arguments non JSON : gardés tels quels */ }
+      return { name: c.function?.name, arguments: args };
+    }),
+    ...(content ? { content } : {}),
+  }, null, 2);
+}
+
+/**
+ * Comme complete(), en streaming (SSE) : `onDelta` reçoit chaque morceau de texte généré.
+ * Renvoie en plus le délai avant le premier morceau (ttftMs).
+ */
+export async function completeStream(
+  ref: ModelRef,
+  body: Record<string, unknown>,
+  opts: { signal?: AbortSignal; timeoutMs?: number; onDelta: (text: string) => void },
+): Promise<Completion & { ttftMs?: number }> {
+  const p = provider(ref.provider);
+  const timeout = AbortSignal.timeout(opts.timeoutMs ?? 180_000);
+  const started = performance.now();
+  const post = (b: Record<string, unknown>) => fetch(upstreamUrl(ref.provider, "/chat/completions"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(p) },
+    body: JSON.stringify(adaptBody(ref.provider, ref.model, { ...b, model: ref.model, stream: true, stream_options: { include_usage: true } })),
+    signal: opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout,
+  });
+  let res = await post(body);
+  if (!res.ok) {
+    const detail = (await res.text()).slice(0, 300);
+    if (Array.isArray(body.tools) && body.tools.length && /tools?\b.*not supported|does not support tools/i.test(detail)) {
+      res = await post(toolsAsText(body));
+      if (!res.ok) throw new Error(`HTTP ${res.status} ${(await res.text()).slice(0, 300)}`);
+    } else throw new Error(`HTTP ${res.status} ${detail}`);
+  }
+  // Réponse non SSE (fournisseur sans streaming) : lue d'un bloc.
+  if (!res.headers.get("content-type")?.includes("event-stream")) {
+    const json = (await res.json()) as any;
+    const message = json.choices?.[0]?.message;
+    const text = completionText(String(message?.content ?? "").trim(), Array.isArray(message?.tool_calls) ? message.tool_calls : []);
+    if (text) opts.onDelta(text);
+    return { text, promptTokens: json.usage?.prompt_tokens, completionTokens: json.usage?.completion_tokens, finishReason: json.choices?.[0]?.finish_reason, ttftMs: Math.round(performance.now() - started) };
+  }
+
+  let content = "", buffer = "", ttftMs: number | undefined, usage: any, finishReason: string | undefined;
+  const toolCalls: any[] = [];
+  const decoder = new TextDecoder();
+  const onLine = (line: string) => {
+    if (!line.startsWith("data:")) return;
+    const data = line.slice(5).trim();
+    if (!data || data === "[DONE]") return;
+    let chunk: any;
+    try { chunk = JSON.parse(data); } catch { return; }
+    if (chunk.error) throw new Error(String(chunk.error.message ?? JSON.stringify(chunk.error)));
+    if (chunk.usage) usage = chunk.usage;
+    const choice = chunk.choices?.[0];
+    if (choice?.finish_reason) finishReason = choice.finish_reason;
+    const delta = choice?.delta ?? {};
+    // Appels d'outils : nom et arguments arrivent par morceaux, rassemblés par index.
+    for (const t of delta.tool_calls ?? []) {
+      const c = (toolCalls[t.index ?? 0] ??= { function: { name: "", arguments: "" } });
+      if (t.function?.name) c.function.name += t.function.name;
+      if (t.function?.arguments) c.function.arguments += t.function.arguments;
+    }
+    if (typeof delta.content === "string" && delta.content) {
+      ttftMs ??= Math.round(performance.now() - started);
+      content += delta.content;
+      opts.onDelta(delta.content);
+    }
+  };
+  for await (const chunk of res.body as any) {
+    buffer += decoder.decode(chunk, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    lines.forEach(onLine);
+  }
+  onLine(buffer);
+  const calls = toolCalls.filter(Boolean);
+  if (calls.length) ttftMs ??= Math.round(performance.now() - started);
+  return { text: completionText(content.trim(), calls), promptTokens: usage?.prompt_tokens, completionTokens: usage?.completion_tokens, finishReason, ttftMs };
 }
 
 // =================================================================================================

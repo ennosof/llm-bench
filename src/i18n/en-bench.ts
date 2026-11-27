@@ -106,4 +106,12 @@ export const EN_BENCH: Record<string, string> = {
   "{name}.checks n'est pas un objet écrit dans le fichier : ajouter la vérification à la main": "{name}.checks is not an object written in the file: add the check by hand",
   "config illisible après modification, rien n'a été changé : {error}": "config unreadable after the change, nothing was changed: {error}",
   "banc inconnu : prompt ou server": "unknown bench: prompt or server",
+  // chat
+  "choisir un modèle": "choose a model",
+  "message vide": "empty message",
+  "le serveur {name} est occupé ({reason})": "server {name} is busy ({reason})",
+  "serveur(s) occupé(s) : {names}": "busy server(s): {names}",
+  "campagne": "campaign",
+  "rejeu": "replay",
+  "chat": "chat",
 };
